@@ -29,7 +29,7 @@ var APP = React.createClass({
 
   checkLogin: function() {
     if(ls.getItem('weibo-access-token')) {
-      this.getUser()
+      this.getUser(ls.getItem('weibo-access-token'))
       this.setLogin(true)
     }
   },
@@ -40,9 +40,9 @@ var APP = React.createClass({
     })
   },
 
-  getUser: function(fn) {
-    var uid_url = 'https://api.weibo.com/2/account/get_uid.json?access_token=2.00YwP8sBGoDixB537b1199b20i7RQn';
-    // var user_url = 'https://api.weibo.com/2/users/show.json?access_token=2.00YwP8sBGoDixB537b1199b20i7RQn&uid=' + uid
+  getUser: function(token) {
+    var uid_url = 'https://api.weibo.com/2/account/get_uid.json?access_token=' + token;
+    // var user_url = 'https://api.weibo.com/2/users/show.json?access_token=' + token + '&uid=' + uid
     jsonp(uid_url, function(err, res) {
       console.log('res', res)
     }.bind(this))

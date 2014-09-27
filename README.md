@@ -3,8 +3,10 @@ hack-weibo
 
 HackNews style Sina Weibo client
 
-### Developent
+### Development
 
 ```
 $ cp config.example.json config.json
+$ npm i
+$ webpack
 ```
