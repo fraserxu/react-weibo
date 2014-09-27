@@ -5,12 +5,15 @@ var React = require('react');
 
 module.exports = React.createClass({
   render: function() {
+    var login = this.props.loggedIn ?
+      <a href="/logout">Logout</a> :
+      <a href="">fraserxu</a>
     return (
       <header>
         <div className='container'>
 
           <div>
-            <a href="/login">Login</a>
+            {login}
           </div>
 
         </div>

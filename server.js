@@ -40,8 +40,7 @@ passport.use(new WeiboStrategy({
 app.get('/login', passport.authenticate('weibo'), function(req, res){ });
 
 app.get('/auth/weibo/callback', passport.authenticate('weibo', { failureRedirect: '/login' }), function(req, res) {
-  console.log('req', req.user)
-  res.redirect('/');
+  res.redirect('/?accessToken=' + req.user.authInfo.accessToken);
 });
 
 var server = app.listen(8000, function() {
