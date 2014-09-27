@@ -10,7 +10,7 @@ module.exports = React.createClass({
         <div className='container'>
 
           <div>
-            <a href="/login?type=weibo">Login</a>
+            <a href="/login">Login</a>
           </div>
 
         </div>
