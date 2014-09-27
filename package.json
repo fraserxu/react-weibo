@@ -4,7 +4,13 @@
   "description": "socialhub",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build-js": "browserify main.js -t [ reactify --everything ] | uglifyjs -mc > build/bundle.js",
+    "build-css": "cat css/*.css > build/bundle.css",
+    "build": "npm run build-js && npm run build-css",
+    "watch-js": "watchify main.js -t [ reactify --everything ] -o build/bundle.js -dv",
+    "watch-css": "catw css/*.css -o build/bundle.css -v",
+    "watch": "npm run watch-js & npm run watch-css",
+    "start": "nodemon server.js"
   },
   "repository": {
     "type": "git",
@@ -17,13 +23,9 @@
   },
   "homepage": "https://github.com/fraserxu/socialhub",
   "devDependencies": {
-    "css-loader": "^0.9.0",
-    "file-loader": "^0.7.2",
-    "json-loader": "^0.5.1",
-    "jsx-loader": "^0.11.2",
-    "style-loader": "^0.8.0",
-    "url-loader": "^0.5.5",
-    "webpack": "^1.4.4"
+    "catw": "^0.2.0",
+    "reactify": "^0.14.0",
+    "watchify": "^1.0.6"
   },
   "dependencies": {
     "axios": "^0.3.1",

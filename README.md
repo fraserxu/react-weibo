@@ -1,12 +1,19 @@
-hack-weibo
+react-weibo
 ==========
 
-HackNews style Sina Weibo client
+Try to build a weibo client with react.
 
 ### Development
 
 ```
 $ cp config.example.json config.json
 $ npm i
-$ webpack
+$ npm run build
+$ npm start
+```
+
+or
+
+```
+$ npm run watch
 ```
