@@ -42,9 +42,12 @@ var APP = React.createClass({
 
   getUser: function(token) {
     var uid_url = 'https://api.weibo.com/2/account/get_uid.json?access_token=' + token;
-    // var user_url = 'https://api.weibo.com/2/users/show.json?access_token=' + token + '&uid=' + uid
     jsonp(uid_url, function(err, res) {
-      console.log('res', res)
+      var uid = res.data.uid;
+      var user_url = 'https://api.weibo.com/2/users/show.json?access_token=' + token + '&uid=' + uid
+      jsonp(user_url, function(err, res) {
+        console.log('user', res.data)
+      }.bind(this))
     }.bind(this))
   },
 
