@@ -1,0 +1,12 @@
+.profile {
+  width: 400px;
+  text-align: center;
+}
+
+.profile > img {
+  border-radius: 2px;
+}
+
+.profile > a {
+  display: block;
+}
