@@ -3,6 +3,7 @@
 
 var React = require('react');
 var axios = require('axios');
+var Profile = require('./profile');
 
 module.exports = React.createClass({
   getInitialState: function() {
@@ -26,6 +27,7 @@ module.exports = React.createClass({
   render: function() {
     return (
       <div className='container content'>
+        <Profile profile={this.props.user} />
         <ul className='posts'>
 
         </ul>

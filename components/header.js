@@ -8,6 +8,7 @@ module.exports = React.createClass({
     var login = this.props.loggedIn ?
       <a href="/logout">Logout</a> :
       <a href="/login">Login</a>
+
     return (
       <header>
         <div className='container'>

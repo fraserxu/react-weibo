@@ -6,7 +6,7 @@ var ls = global.localStorage;
 // var axios = require('axios');
 var Header = require('./components/header');
 var Status = require('./components/status');
-var jsonp = require('jsonp');
+var weibo = require('./components/weibo');
 
 require('./css/typography.css')
 require('./css/styles.css')
@@ -14,7 +14,8 @@ require('./css/styles.css')
 var APP = React.createClass({
   getInitialState: function() {
     return {
-      loggedIn: false
+      loggedIn: false,
+      user: {}
     };
   },
   componentWillMount: function() {
@@ -29,7 +30,13 @@ var APP = React.createClass({
 
   checkLogin: function() {
     if(ls.getItem('weibo-access-token')) {
-      this.getUser(ls.getItem('weibo-access-token'))
+      // this.getUser(ls.getItem('weibo-access-token'))
+      this.getUser(function(err, user) {
+        if(err) alert('ger user error')
+        this.setState({
+          user: user
+        })
+      }.bind(this))
       this.setLogin(true)
     }
   },
@@ -40,25 +47,23 @@ var APP = React.createClass({
     })
   },
 
-  getUser: function(token) {
-    var uid_url = 'https://api.weibo.com/2/account/get_uid.json?access_token=' + token;
-    jsonp(uid_url, function(err, res) {
-      var uid = res.data.uid;
-      var user_url = 'https://api.weibo.com/2/users/show.json?access_token=' + token + '&uid=' + uid
-      jsonp(user_url, function(err, res) {
-        console.log('user', res.data)
-      }.bind(this))
-    }.bind(this))
+  getUser: function(cb) {
+    weibo.getUid(function(err, uid) {
+      weibo.getUserByUid(uid, function(err, user) {
+        if(err) return cb(err)
+        cb(err, user)
+      })
+    })
   },
 
   render: function() {
     return (
       <div>
-        <Header loggedIn={this.state.loggedIn} />
-        <Status />
+        <Header loggedIn={this.state.loggedIn} user={this.state.user} />
+        <Status user={this.state.user} />
       </div>
     );
   }
 });
 
-React.renderComponent(<APP />, document.body);
+React.renderComponent(<APP />, document.getElementById('main'));
