@@ -15,5 +15,13 @@ module.exports = {
       if(err) cb(err)
       cb(null, res.data)
     })
+  },
+
+  getTimeline: function(cb) {
+    var timeline_url = 'https://api.weibo.com/2/statuses/home_timeline.json?access_token=2.00YwP8sBGoDixB537b1199b20i7RQn'
+    jsonp(timeline_url, function(err, res) {
+      if(err) cb(err)
+      cb(null, res.data.statuses)
+    })
   }
 }

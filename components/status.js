@@ -4,33 +4,32 @@
 var React = require('react');
 var axios = require('axios');
 var Profile = require('./profile');
+var Feed = require('./feed');
+var weibo = require('./weibo');
 
 module.exports = React.createClass({
   getInitialState: function() {
     return {
-      posts: []
+      feeds: []
     };
   },
 
-  getPosts: function(props) {
-    props = props || this.props;
-  },
+  getFeeds: weibo.getTimeline,
 
   componentWillMount: function() {
-    this.getPosts();
-  },
-
-  componentWillReceiveProps: function(nextProps) {
-    this.getPosts(nextProps);
+    this.getFeeds(function(err, feeds) {
+      console.log(feeds)
+      this.setState({
+        feeds: feeds
+      });
+    }.bind(this));
   },
 
   render: function() {
     return (
       <div className='container content'>
         <Profile profile={this.props.user} />
-        <ul className='posts'>
-
-        </ul>
+        <Feed feeds={this.state.feeds} />
       </div>
     );
   }
