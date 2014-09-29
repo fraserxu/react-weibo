@@ -43,7 +43,7 @@ var Weibo = {
     if(!token) throw new Error('Need token.')
     var new_status_url = 'https://api.weibo.com/2/statuses/update.json?access_token=' + token + '&status=' + content
     axios.post(new_status_url, {
-      withCredentials: false
+      withCredentials: true
     })
     .then(function (response) {
         console.log(response);

@@ -4,6 +4,7 @@
 var React = require('react');
 var weibo = require('./weibo');
 var ENTER_KEY_CODE = 13;
+var ls = global.localStorage;
 
 require('../css/feed.css');
 
@@ -29,7 +30,7 @@ var NewPost = React.createClass({
   },
   send: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
-    weibo.newStatus(msg)
+    weibo.newStatus(ls.getItem('weibo-access-token'), msg)
   },
   render: function() {
     return (
