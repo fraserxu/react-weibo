@@ -43,6 +43,8 @@ app.get('/auth/weibo/callback', passport.authenticate('weibo', { failureRedirect
   res.redirect('/?accessToken=' + req.user.authInfo.accessToken);
 });
 
-var server = app.listen(8000, function() {
-  console.log('server running on port 8000')
+var port = process.env.PORT || 8000;
+
+var server = app.listen(port, function() {
+  console.log('server running on port ', port)
 })
