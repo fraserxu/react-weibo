@@ -18,11 +18,14 @@ module.exports = React.createClass({
   getFeeds: weibo.getTimeline,
 
   componentWillMount: function() {
-    this.getFeeds(ls.getItem('weibo-access-token'), function(err, feeds) {
+    if(this.props.loggedIn) {
+      this.getFeeds(ls.getItem('weibo-access-token'), function(err, feeds) {
       this.setState({
-        feeds: feeds
-      });
-    }.bind(this));
+          feeds: feeds
+        });
+      }.bind(this));
+    }
+
   },
 
   render: function() {

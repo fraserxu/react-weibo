@@ -53,7 +53,7 @@ var APP = React.createClass({
     return (
       <div>
         <Header loggedIn={this.state.loggedIn} user={this.state.user} />
-        <Status user={this.state.user} />
+        <Status loggedIn={this.state.loggedIn} user={this.state.user} />
       </div>
     );
   }

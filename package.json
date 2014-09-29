@@ -1,21 +1,21 @@
 {
-  "name": "socialhub",
+  "name": "react-weibo",
   "version": "0.0.0",
-  "description": "socialhub",
+  "description": "react-weibo",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "postinstall": "echo tryting to install dependencies; npm install -g webpack && webpack -p"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fraserxu/socialhub.git"
+    "url": "https://github.com/fraserxu/react-weibo.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/fraserxu/socialhub/issues"
+    "url": "https://github.com/fraserxu/react-weibo/issues"
   },
-  "homepage": "https://github.com/fraserxu/socialhub",
+  "homepage": "https://github.com/fraserxu/react-weibo",
   "devDependencies": {
     "css-loader": "^0.9.0",
     "file-loader": "^0.7.2",
