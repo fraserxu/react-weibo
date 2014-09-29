@@ -31,7 +31,7 @@ var APP = React.createClass({
   checkLogin: function() {
     if(ls.getItem('weibo-access-token')) {
       // this.getUser(ls.getItem('weibo-access-token'))
-      this.getUser(function(err, user) {
+      this.getUser(ls.getItem('weibo-access-token'), function(err, user) {
         if(err) alert('ger user error')
         this.setState({
           user: user
@@ -47,14 +47,7 @@ var APP = React.createClass({
     })
   },
 
-  getUser: function(cb) {
-    weibo.getUid(function(err, uid) {
-      weibo.getUserByUid(uid, function(err, user) {
-        if(err) return cb(err)
-        cb(err, user)
-      })
-    })
-  },
+  getUser: weibo.getUser,
 
   render: function() {
     return (

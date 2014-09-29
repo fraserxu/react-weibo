@@ -6,6 +6,7 @@ var axios = require('axios');
 var Profile = require('./profile');
 var Feed = require('./feed');
 var weibo = require('./weibo');
+var ls = global.localStorage;
 
 module.exports = React.createClass({
   getInitialState: function() {
@@ -17,8 +18,7 @@ module.exports = React.createClass({
   getFeeds: weibo.getTimeline,
 
   componentWillMount: function() {
-    this.getFeeds(function(err, feeds) {
-      console.log(feeds)
+    this.getFeeds(ls.getItem('weibo-access-token'), function(err, feeds) {
       this.setState({
         feeds: feeds
       });

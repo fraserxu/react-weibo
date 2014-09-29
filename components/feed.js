@@ -2,6 +2,8 @@
 'use strict';
 
 var React = require('react');
+var weibo = require('./weibo');
+var ENTER_KEY_CODE = 13;
 
 require('../css/feed.css');
 
@@ -21,6 +23,46 @@ var Feed = React.createClass({
   }
 });
 
+var NewPost = React.createClass({
+  getInitialState: function() {
+    return {text: ''};
+  },
+  send: function(content) {
+    var msg = typeof content === 'string' ? content : this.state.text
+    weibo.newStatus(msg)
+  },
+  render: function() {
+    return (
+      <div className='new'>
+        <textarea
+          name="message"
+          palceholder="What's up?"
+          value={this.state.text}
+          onChange={this._onChange}
+          onKeyDown={this._onKeyDown}
+          rows="5"
+          cols="80"
+        />
+        <button onClick={this.send}>Send</button>
+      </div>
+    )
+  },
+
+  _onChange: function(event, value) {
+    this.setState({text: event.target.value});
+  },
+
+  _onKeyDown: function(event) {
+    if (event.keyCode === ENTER_KEY_CODE) {
+      var text = this.state.text.trim();
+      if (text) {
+        this.send(text);
+      }
+      this.setState({text: ''});
+    }
+  }
+})
+
 module.exports = React.createClass({
   render: function() {
     var feeds = this.props.feeds.map(function(feed, key) {
@@ -28,6 +70,7 @@ module.exports = React.createClass({
     })
     return (
       <div className='feeds'>
+        <NewPost />
         <ul className='posts'>
           {feeds}
         </ul>
