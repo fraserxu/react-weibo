@@ -1,0 +1,7 @@
+{
+  "weibo": {
+    "appkey" : "1798437726",
+    "secret" : "73a199f0c4ef0bc3805931dedd59ffc1",
+    "oauth_callback_url" : "http://127.0.0.1:8000/auth/weibo/callback"
+  }
+}
