@@ -2,13 +2,15 @@
   "name": "react-weibo",
   "version": "0.0.1",
   "description": "react-weibo",
-  "main": "index.js",
-  "scripts": {},
+  "main": "server.js",
+  "scripts": {
+    "postinstall": "echo install dependencies success."
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/fraserxu/react-weibo.git"
   },
-  "author": "",
+  "author": "fraserxu",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/fraserxu/react-weibo/issues"
