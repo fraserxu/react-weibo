@@ -4,6 +4,7 @@
   "description": "react-weibo",
   "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "postinstall": "echo install dependencies success."
   },
   "repository": {
@@ -34,5 +35,8 @@
     "passport-weibo": "^0.1.2",
     "react": "^0.11.2",
     "react-time": "^1.0.0"
+  },
+  "engines": {
+    "node": "0.10.x"
   }
 }
