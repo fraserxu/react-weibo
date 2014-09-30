@@ -7,7 +7,6 @@ require('../css/profile.css');
 
 module.exports = React.createClass({
   render: function() {
-    console.log('profile', this.props.profile)
     return (
       <div className='profile'>
         <figure className='profile-avatar'>

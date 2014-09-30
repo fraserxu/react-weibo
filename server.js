@@ -56,6 +56,8 @@ app.post('*', function(req, res) {
       'Content-Length': qs.stringify(req.body).length
     }
   }, function(err, response, body) {
+    console.log('server response', response)
+    if(err) return console.log(err)
     if (!err && response.statusCode == 200) {
       res.json(JSON.parse(body))
     }

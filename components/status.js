@@ -2,7 +2,7 @@
 'use strict';
 
 var React = require('react');
-var Feed = require('./feed');
+var Feeds = require('./feeds');
 var weibo = require('./weibo');
 var ls = global.localStorage;
 
@@ -29,7 +29,7 @@ module.exports = React.createClass({
   render: function() {
     return (
       <div className='container content'>
-        <Feed feeds={this.state.feeds} profile={this.props.profile}/>
+        <Feeds feeds={this.state.feeds} profile={this.props.profile}/>
       </div>
     );
   }

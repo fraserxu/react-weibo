@@ -2,27 +2,41 @@
 'use strict';
 
 var React = require('react');
-var weibo = require('./weibo');
-var ENTER_KEY_CODE = 13;
-var ls = global.localStorage;
+var Comments = require('./comments');
 var Timestamp = require('react-time');
+var weibo = require('./weibo');
+var ls = global.localStorage;
 
-require('../css/feed.css');
+module.exports = React.createClass({
+  getInitialState: function() {
+    return {
+      comments: [],
+      commentsLoaded: false
+    };
+  },
 
-var Feed = React.createClass({
   destroyStatus: function() {
     weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
       console.log('destroy', data)
     })
   },
 
-  render: function() {
-    var feed = this.props.feed;
-    var profile = this.props.profile;
-    var thumbnail = feed.thumbnail_pic ?
-      <img src={feed.thumbnail_pic} alt={feed.text} /> : null
+  loadComments: function() {
+    this.setState({
+      commentsLoaded: !this.state.commentsLoaded
+    })
+    weibo.loadComments(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
+      this.setState({
+        comments: data
+      })
+    }.bind(this))
+  },
 
-    var deleteButton = profile.name == feed.user.name ?
+  render: function() {
+    var thumbnail = this.props.feed.thumbnail_pic ?
+      <img src={this.props.feed.thumbnail_pic} alt={this.props.feed.text} /> : null
+
+    var deleteButton = this.props.profile.name == this.props.feed.user.name ?
       <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
 
     return (
@@ -31,83 +45,24 @@ var Feed = React.createClass({
 
         <div className='post-avatar'>
           <span className='avatar-container'>
-            <img src={feed.user.profile_image_url} alt={feed.user.name} />
+            <img src={this.props.feed.user.profile_image_url} alt={this.props.feed.user.name} />
           </span>
         </div>
 
         <div className='post-content'>
-          <p>{feed.text}</p>
+          <p>{this.props.feed.text}</p>
           {thumbnail}
         </div>
 
         <div className='postbar'>
-          <Timestamp value={new Date(feed.created_at)} relative />
-          <span className='like-count'>Like ({feed.attitudes_count})</span>
-          <span className='reposts-count'>Reposts ({feed.reposts_count})</span>
-          <span className='comments-count'>Comment ({feed.comments_count})</span>
+          <Timestamp value={new Date(this.props.feed.created_at)} relative />
+          <span className='like-count'>Like ({this.props.feed.attitudes_count})</span>
+          <span className='reposts-count'>Reposts ({this.props.feed.reposts_count})</span>
+          <span className='comments-count'>Comment (<a onClick={this.loadComments}>{this.props.feed.comments_count}</a>)</span>
         </div>
 
+        <Comments feed={this.props.feed} comments={this.state.comments} commentsLoaded={this.state.commentsLoaded}/>
       </article>
     )
   }
 });
-
-var NewPost = React.createClass({
-  getInitialState: function() {
-    return {text: ''};
-  },
-  send: function(content) {
-    var msg = typeof content === 'string' ? content : this.state.text
-    weibo.newStatus(ls.getItem('weibo-access-token'), msg, function(err, res) {
-      console.log(res.data)
-    })
-  },
-  render: function() {
-    return (
-      <div className='new'>
-        <textarea
-          name="message"
-          palceholder="What's up?"
-          value={this.state.text}
-          onChange={this._onChange}
-          onKeyDown={this._onKeyDown}
-          rows="5"
-          cols="80"
-        />
-        <button onClick={this.send}>Send</button>
-      </div>
-    )
-  },
-
-  _onChange: function(event, value) {
-    this.setState({text: event.target.value});
-  },
-
-  _onKeyDown: function(event) {
-    if (event.keyCode === ENTER_KEY_CODE) {
-      var text = this.state.text.trim();
-      if (text) {
-        this.send(text);
-      }
-      this.setState({text: ''});
-    }
-  }
-})
-
-module.exports = React.createClass({
-  render: function() {
-    var feeds = this.props.feeds.map(function(feed, key) {
-      return <Feed profile={this.props.profile} key={key} feed={feed} />
-    }.bind(this))
-    return (
-      <div>
-        <NewPost />
-        <section className='posts'>
-          {feeds}
-        </section>
-      </div>
-    );
-  }
-});
-
-
