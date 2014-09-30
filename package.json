@@ -34,7 +34,8 @@
     "passport": "^0.2.1",
     "passport-weibo": "^0.1.2",
     "react": "^0.11.2",
-    "react-time": "^1.0.0"
+    "react-time": "^1.0.0",
+    "request": "^2.44.0"
   },
   "engines": {
     "node": "0.10.x"
