@@ -41,30 +41,30 @@ var Weibo = {
   },
 
   // http://open.weibo.com/wiki/2/statuses/update
-  newStatus: function(token, status) {
+  newStatus: function(token, status, cb) {
     if(!token) throw new Error('Need token.')
     axios.post('statuses/update', {
       access_token: token,
       status: encodeURI(status)
     }).then(function(response) {
-      console.log(response.data)
+      cb(null, response)
     })
     .catch(function(err) {
-      console.log(err)
+      cb(err)
     })
   },
 
   // http://open.weibo.com/wiki/2/statuses/destroy
-  destroyStatus: function(token, id) {
+  destroyStatus: function(token, id, cb) {
     if(!token) throw new Error('Need token.')
     axios.post('statuses/destroy', {
       access_token: token,
       id: id
     }).then(function(response) {
-      console.log('destroy weibo success', response.data)
+      cb(null, response)
     })
     .catch(function(err) {
-      console.log(err)
+      cb(err)
     })
   }
 

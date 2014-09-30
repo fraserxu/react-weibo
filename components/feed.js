@@ -11,7 +11,9 @@ require('../css/feed.css');
 
 var Feed = React.createClass({
   destroyStatus: function() {
-    weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id)
+    weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
+      console.log('destroy', data)
+    })
   },
 
   render: function() {
@@ -22,8 +24,6 @@ var Feed = React.createClass({
 
     var deleteButton = profile.name == feed.user.name ?
       <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
-
-    var publish
 
     return (
       <article className='post'>
@@ -58,7 +58,9 @@ var NewPost = React.createClass({
   },
   send: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
-    weibo.newStatus(ls.getItem('weibo-access-token'), msg)
+    weibo.newStatus(ls.getItem('weibo-access-token'), msg, function(err, res) {
+      console.log(res.data)
+    })
   },
   render: function() {
     return (
