@@ -5,7 +5,6 @@ var React = require('react');
 var weibo = require('./weibo');
 var ls = global.localStorage;
 var Feed = require('./feed');
-var NewPost = require('./newPost');
 
 require('../css/feed.css');
 
@@ -17,7 +16,6 @@ module.exports = React.createClass({
 
     return (
       <div className='feeds'>
-        <NewPost />
         <section className='posts'>
           {feeds}
         </section>

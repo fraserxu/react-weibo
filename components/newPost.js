@@ -8,12 +8,14 @@ module.exports = React.createClass({
   getInitialState: function() {
     return {text: ''};
   },
+
   send: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
     weibo.newStatus(ls.getItem('weibo-access-token'), msg, function(err, res) {
       console.log(res.data)
     })
   },
+
   render: function() {
     return (
       <div className='new'>
@@ -24,7 +26,7 @@ module.exports = React.createClass({
           onChange={this._onChange}
           onKeyDown={this._onKeyDown}
           rows="5"
-          cols="80"
+          cols="40"
         />
         <button onClick={this.send}>Send</button>
       </div>

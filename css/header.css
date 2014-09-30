@@ -16,3 +16,18 @@
   top: 10px;
   right: 20px;
 }
+
+.user_header .new {
+  position: absolute;
+  z-index: 10;
+  top: 40px;
+  right: 20px;
+}
+
+.user_header .new textarea {
+  display: block;
+}
+
+.user_header .new button {
+  float: right;
+}
