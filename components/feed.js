@@ -39,6 +39,13 @@ module.exports = React.createClass({
     var deleteButton = this.props.profile.name == this.props.feed.user.name ?
       <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
 
+    if(this.props.feed.retweeted_status) {
+      console.log(this.props.feed.retweeted_status)
+    }
+
+    var retweet = this.props.feed.retweeted_status ?
+      <div className='retweet'><a href={'http://weibo.com/' + this.props.feed.retweeted_status.user.profile_url}>@{this.props.feed.retweeted_status.user.name}</a><p>{this.props.feed.retweeted_status.text}</p> <img src={this.props.feed.retweeted_status.original_pic}/></div>: null
+
     return (
       <article className='post'>
         {deleteButton}
@@ -52,6 +59,7 @@ module.exports = React.createClass({
         <div className='post-content'>
           <p>{this.props.feed.text}</p>
           {thumbnail}
+          {retweet}
         </div>
 
         <div className='postbar'>

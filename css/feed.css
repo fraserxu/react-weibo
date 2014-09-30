@@ -20,22 +20,46 @@
   word-wrap: break-word;
 }
 
+.post-content .retweet {
+  background-color: #f2f2f2 !important;
+  padding: 10px;
+  margin: 10px 0;
+  max-width: 780px;
+}
+
+.post-content .retweet p {
+  color: #595959;
+  font-size: 0.8rem;
+}
+
+.post-content .retweet a {
+  text-decoration: none;
+  border-bottom: 1px solid;
+  background: transparent;
+  font-size: 0.75rem;
+  color: #333333;
+}
+
+.post-content .retweet img {
+  width: 140px;
+}
+
 .post {
   position: relative;
   padding-left: 90px;
+  padding-bottom: 40px;
 }
 
 .post>div:last-child {
   margin-bottom: 3.75rem;
 }
 
-.post p {
-  margin-top: 0;
-  max-width: 780px;
-}
-
 .post p, .post img {
   margin-bottom: 1.25rem;
+  margin-top: 0;
+  max-width: 780px;
+  max-height: 200px;
+  overflow: hidden;
 }
 
 .postbar {

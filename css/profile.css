@@ -6,6 +6,8 @@
   position: absolute;
   top: 0;
   left: 0;
+  margin-left: 0px;
+  margin-top: 30px;
 }
 
 .profile .profile-avatar .avatar-container {
@@ -22,7 +24,7 @@
   height: 240px;
   overflow: hidden;
   padding-top: 0;
-  margin-left: 240px;
+  margin-left: 200px;
 }
 
 .profile .profile-body .heading {
