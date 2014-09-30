@@ -49,19 +49,18 @@
 
 	var React = __webpack_require__(4);
 	var ls = global.localStorage;
-	// var axios = require('axios');
 	var Header = __webpack_require__(1);
 	var Status = __webpack_require__(2);
 	var weibo = __webpack_require__(3);
 
-	__webpack_require__(7)
-	__webpack_require__(9)
+	__webpack_require__(187)
+	__webpack_require__(189)
 
 	var APP = React.createClass({displayName: 'APP',
 	  getInitialState: function() {
 	    return {
 	      loggedIn: false,
-	      user: {}
+	      profile: {}
 	    };
 	  },
 	  componentWillMount: function() {
@@ -77,10 +76,10 @@
 	  checkLogin: function() {
 	    if(ls.getItem('weibo-access-token')) {
 	      // this.getUser(ls.getItem('weibo-access-token'))
-	      this.getUser(ls.getItem('weibo-access-token'), function(err, user) {
-	        if(err) alert('ger user error')
+	      this.getUser(ls.getItem('weibo-access-token'), function(err, profile) {
+	        if(err) alert('ger profile error')
 	        this.setState({
-	          user: user
+	          profile: profile
 	        })
 	      }.bind(this))
 	      this.setLogin(true)
@@ -97,9 +96,9 @@
 
 	  render: function() {
 	    return (
-	      React.DOM.div(null, 
-	        Header({loggedIn: this.state.loggedIn, user: this.state.user}), 
-	        Status({loggedIn: this.state.loggedIn, user: this.state.user})
+	      React.DOM.div({id: "main-container"}, 
+	        Header({loggedIn: this.state.loggedIn, profile: this.state.profile}), 
+	        Status({loggedIn: this.state.loggedIn, profile: this.state.profile})
 	      )
 	    );
 	  }
@@ -116,22 +115,20 @@
 	'use strict';
 
 	var React = __webpack_require__(4);
+	var Profile = __webpack_require__(5);
+
+	__webpack_require__(191);
 
 	module.exports = React.createClass({displayName: 'exports',
 	  render: function() {
 	    var login = this.props.loggedIn ?
-	      React.DOM.a({href: "/logout"}, "Logout") :
-	      React.DOM.a({href: "/login"}, "Login")
+	      React.DOM.a({className: "logout-btn", href: "/logout"}, "Logout") :
+	      React.DOM.a({className: "login-btn", href: "/login"}, "Login")
 
 	    return (
-	      React.DOM.header(null, 
-	        React.DOM.div({className: "container"}, 
-
-	          React.DOM.div(null, 
-	            login
-	          )
-
-	        )
+	      React.DOM.header({className: "user_header"}, 
+	        login, 
+	        Profile({profile: this.props.profile})
 	      )
 	    );
 	  }
@@ -146,8 +143,6 @@
 	'use strict';
 
 	var React = __webpack_require__(4);
-	var axios = __webpack_require__(12);
-	var Profile = __webpack_require__(5);
 	var Feed = __webpack_require__(6);
 	var weibo = __webpack_require__(3);
 	var ls = global.localStorage;
@@ -175,8 +170,7 @@
 	  render: function() {
 	    return (
 	      React.DOM.div({className: "container content"}, 
-	        Profile({profile: this.props.user}), 
-	        Feed({feeds: this.state.feeds})
+	        Feed({feeds: this.state.feeds, profile: this.props.profile})
 	      )
 	    );
 	  }
@@ -191,9 +185,11 @@
 	var jsonp = __webpack_require__(13);
 	var axios = __webpack_require__(12);
 
+	var API_BASE = 'https://api.weibo.com/2'
+
 	var Weibo = {
 	  _getUid: function(token, cb) {
-	    var uid_url = 'https://api.weibo.com/2/account/get_uid.json?access_token=' + token;
+	    var uid_url = API_BASE + '/account/get_uid.json?access_token=' + token;
 	    jsonp(uid_url, function(err, res) {
 	      if(err) return cb(err)
 	      cb(null, res.data.uid)
@@ -201,7 +197,7 @@
 	  },
 
 	  _getUserByUid: function(token, uid, cb) {
-	    var user_url = 'https://api.weibo.com/2/users/show.json?access_token=' + token + '&uid=' + uid
+	    var user_url = API_BASE + '/users/show.json?access_token=' + token + '&uid=' + uid
 	    jsonp(user_url, function(err, res) {
 	      if(err) cb(err)
 	      cb(null, res.data)
@@ -221,27 +217,41 @@
 
 	  getTimeline: function(token, cb) {
 	    if(!token) throw new Error('Need token.')
-	    var timeline_url = 'https://api.weibo.com/2/statuses/home_timeline.json?access_token=' + token
+	    var timeline_url = API_BASE + '/statuses/home_timeline.json?access_token=' + token
 	    jsonp(timeline_url, function(err, res) {
 	      if(err) cb(err)
 	      cb(null, res.data.statuses)
 	    })
 	  },
 
-	  // this will never work until CORS is enabled in the server
-	  newStatus: function(token, content) {
+	  // http://open.weibo.com/wiki/2/statuses/update
+	  newStatus: function(token, status) {
 	    if(!token) throw new Error('Need token.')
-	    var new_status_url = 'https://api.weibo.com/2/statuses/update.json?access_token=' + token + '&status=' + content
-	    axios.post(new_status_url, {
-	      withCredentials: true
+	    axios.post('statuses/update', {
+	      access_token: token,
+	      status: encodeURI(status)
+	    }).then(function(response) {
+	      console.log(response.data)
 	    })
-	    .then(function (response) {
-	        console.log(response);
+	    .catch(function(err) {
+	      console.log(err)
 	    })
-	    .catch(function (response) {
-	        console.log(response);
-	    });
+	  },
+
+	  // http://open.weibo.com/wiki/2/statuses/destroy
+	  destroyStatus: function(token, id) {
+	    if(!token) throw new Error('Need token.')
+	    axios.post('statuses/destroy', {
+	      access_token: token,
+	      id: id
+	    }).then(function(response) {
+	      console.log('destroy weibo success', response.data)
+	    })
+	    .catch(function(err) {
+	      console.log(err)
+	    })
 	  }
+
 	}
 
 	module.exports = Weibo
@@ -266,11 +276,35 @@
 
 	module.exports = React.createClass({displayName: 'exports',
 	  render: function() {
+	    console.log('profile', this.props.profile)
 	    return (
 	      React.DOM.div({className: "profile"}, 
-	        React.DOM.img({src: this.props.profile.avatar_large, alt: this.props.profile.screen_name}), 
-	        React.DOM.a({href: 'weibo.com/' + this.props.profile.profile_url}, this.props.profile.screen_name), 
-	        React.DOM.p(null, this.props.profile.description)
+	        React.DOM.figure({className: "profile-avatar"}, 
+	          React.DOM.span({className: "avatar-container"}, 
+	            React.DOM.img({src: this.props.profile.avatar_large, alt: this.props.profile.screen_name})
+	          )
+	        ), 
+
+	        React.DOM.div({className: "profile-body"}, 
+	          React.DOM.h2({className: "heading"}, 
+	            React.DOM.a({href: 'http://weibo.com/' + this.props.profile.profile_url}, "@", this.props.profile.screen_name)
+	          ), 
+
+	          React.DOM.p({className: "profile-name"}, this.props.profile.name), 
+
+	          React.DOM.p({className: "profile-deets"}, 
+	            "Posts ", React.DOM.span(null, this.props.profile.statuses_count), 
+	            "Following ", React.DOM.span(null, this.props.profile.friends_count), 
+	            "Followers ", React.DOM.span(null, this.props.profile.followers_count)
+	          ), 
+
+	          React.DOM.div({className: "profile-bio"}, 
+	            React.DOM.p(null, this.props.profile.description), 
+	            React.DOM.p({className: "profile-links"}, 
+	              React.DOM.a({href: this.props.profile.url}, this.props.profile.url)
+	            )
+	          )
+	        )
 	      )
 	    );
 	  }
@@ -290,20 +324,48 @@
 	var weibo = __webpack_require__(3);
 	var ENTER_KEY_CODE = 13;
 	var ls = global.localStorage;
+	var Timestamp = __webpack_require__(193);
 
 	__webpack_require__(16);
 
 	var Feed = React.createClass({displayName: 'Feed',
+	  destroyStatus: function() {
+	    weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id)
+	  },
+
 	  render: function() {
 	    var feed = this.props.feed;
+	    var profile = this.props.profile;
 	    var thumbnail = feed.thumbnail_pic ?
 	      React.DOM.img({src: feed.thumbnail_pic, alt: feed.text}) : null
+
+	    var deleteButton = profile.name == feed.user.name ?
+	      React.DOM.button({className: "delete-btn", onClick: this.destroyStatus}, "Delete") : null
+
+	    var publish
+
 	    return (
-	      React.DOM.li(null, 
-	        React.DOM.img({src: feed.user.profile_image_url, alt: feed.user.name}), 
-	        React.DOM.span(null, feed.user.name), 
-	        React.DOM.p(null, feed.text), 
-	        thumbnail
+	      React.DOM.article({className: "post"}, 
+	        deleteButton, 
+
+	        React.DOM.div({className: "post-avatar"}, 
+	          React.DOM.span({className: "avatar-container"}, 
+	            React.DOM.img({src: feed.user.profile_image_url, alt: feed.user.name})
+	          )
+	        ), 
+
+	        React.DOM.div({className: "post-content"}, 
+	          React.DOM.p(null, feed.text), 
+	          thumbnail
+	        ), 
+
+	        React.DOM.div({className: "postbar"}, 
+	          Timestamp({value: new Date(feed.created_at), relative: true}), 
+	          React.DOM.span({className: "like-count"}, "Like (", feed.attitudes_count, ")"), 
+	          React.DOM.span({className: "reposts-count"}, "Reposts (", feed.reposts_count, ")"), 
+	          React.DOM.span({className: "comments-count"}, "Comment (", feed.comments_count, ")")
+	        )
+
 	      )
 	    )
 	  }
@@ -352,12 +414,12 @@
 	module.exports = React.createClass({displayName: 'exports',
 	  render: function() {
 	    var feeds = this.props.feeds.map(function(feed, key) {
-	      return Feed({feed: feed})
-	    })
+	      return Feed({profile: this.props.profile, key: key, feed: feed})
+	    }.bind(this))
 	    return (
-	      React.DOM.div({className: "feeds"}, 
+	      React.DOM.div(null, 
 	        NewPost(null), 
-	        React.DOM.ul({className: "posts"}, 
+	        React.DOM.section({className: "posts"}, 
 	          feeds
 	        )
 	      )
@@ -370,66 +432,10 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 7 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(8);
-	if(typeof content === 'string') content = [module.id, content, ''];
-	// add the styles to the DOM
-	var update = __webpack_require__(11)(content);
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		module.hot.accept("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/typography.css", function() {
-			var newContent = require("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/typography.css");
-			if(typeof newContent === 'string') newContent = [module.id, newContent, ''];
-			update(newContent);
-		});
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 8 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(18)();
-	exports.push([module.id, "/* Set Defaults for Body*/\nbody {\n  line-height: 1.5;\n  font-size: 100%;\n  font-family: Proxima Nova, \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n  font-weight: normal;\n  text-rendering: optimizeLegibility;\n  -webkit-text-size-adjust: 100%;\n  -ms-text-size-adjust: 100%;\n  color: #424242; }\n\ncode {\n  background: #eeeeee;\n  color: #2daebf;\n  padding: 3px 5px;\n  border: 1px solid #dddddd;\n  border-radius: 3px; }\n\nblockquote {\n  font-size: 1.33333em;\n  font-weight: 100;\n  line-height: 28px;\n  padding: 1em;\n  margin: 1em 0;\n  float: left; }\n\nblockquote:before {\n  content: '\\201C';\n  font-size: 128px;\n  font-weight: 200;\n  color: #dddddd;\n  margin-left: -25px;\n  margin-bottom: 10px;\n  position: absolute; }\n\nhr {\n  display: block;\n  height: 0px;\n  width: 100%;\n  border: 0;\n  border-bottom: 1px solid #eeeeee;\n  margin: 2em 0;\n  padding: 0; }\n\n.highlight {\n  background: lightYellow;\n  font-weight: normal; }\n\nspan.fancyamp {\n  font-family: Baskerville, Palatino, \"Book Antiqua\", serif;\n  font-style: italic;\n  color: inherit;\n  font-size: inherit; }\n", ""]);
-
-/***/ },
-/* 9 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(10);
-	if(typeof content === 'string') content = [module.id, content, ''];
-	// add the styles to the DOM
-	var update = __webpack_require__(11)(content);
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		module.hot.accept("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/styles.css", function() {
-			var newContent = require("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/styles.css");
-			if(typeof newContent === 'string') newContent = [module.id, newContent, ''];
-			update(newContent);
-		});
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 10 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(18)();
-	exports.push([module.id, "body {\n  background: #f7f7f7;\n  margin: 0;\n  padding: 0; }\n\n.container {\n  width: 92%;\n  max-width: 720px;\n  positon: relative;\n  margin: 0 auto; }\n\nheader {\n  height: 50px;\n  background: #FC6621;\n  margin-bottom: 20px;\n  line-height: 50px;\n  overflow: hidden;\n  color: #FFF; }\n\naside {\n  position: fixed;\n  width: 150px;\n  display: block;\n  left: 100px; }\n  aside ul {\n    list-style-type: none; }\n  aside ul li {\n    border-radius: 3px;\n    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);\n    background: #FFF;\n    padding: 2em 1em 1em 1em;\n    margin-bottom: 1em; }\n  aside ul li a {\n    display: block;\n    color: #424242;\n    text-align: center;\n    text-decoration: none; }\n\n.logo {\n  background: url("+__webpack_require__(21)+") no-repeat;\n  margin: 10px 0;\n  padding: 0;\n  text-indent: -999px;\n  height: 40px;\n  display: block; }\n\n.upvote {\n  height: 13px;\n  width: 1em;\n  /*background: url(../img/HN/up.gif) center center no-repeat;*/\n  display: inline-block;\n  margin: 0;\n  padding: 0; }\n\n.posts {\n  /*list-style-image: url(../img/HN/up.gif);*/\n  margin: 1em 0 3em 0;\n  padding-left: 1.5em; }\n  .posts li {\n    margin-bottom: 1em;\n    font-weight: 600;\n    font-size: 10pt;\n    font-family: Verdana;\n    font-weight: bold;\n    position: relative; }\n  .posts li a {\n    text-decoration: none;\n    color: #424242; }\n  .posts li:hover .url {\n    opacity: 1; }\n  .posts .url {\n    font-weight: 200;\n    font-size: 0.85em;\n    margin-left: 0.5em;\n    opacity: 0.5; }\n  .posts .url:before {\n    content: \"(\"; }\n  .posts .url:after {\n    content: \")\"; }\n  .posts small {\n    display: block;\n    font-weight: 200;\n    font-size: 0.8em; }\n\n.more,\n.more:visited {\n  margin-left: 1.5em;\n  background-color: #FC6621;\n  display: inline-block;\n  padding: 5px 10px 5px 10px;\n  margin-right: 3px;\n  margin-bottom: 1.5em;\n  color: #ffffff;\n  font-weight: bold;\n  text-decoration: none;\n  border-radius: 3px;\n  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);\n  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.3);\n  border-bottom: 2px solid rgba(0, 0, 0, 0.2);\n  position: relative;\n  cursor: pointer; }\n\n.more:hover {\n  background-color: #d45500;\n  color: #ffffff; }\n\n.more:active {\n  top: 1px; }\n\n@media all and (max-width: 720px) {\n  .posts li {\n    border-bottom: 1px dashed #E7E7E7;\n    padding-bottom: 1em; } }\n", ""]);
-
-/***/ },
+/* 7 */,
+/* 8 */,
+/* 9 */,
+/* 10 */,
 /* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -555,7 +561,7 @@
 /* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(20);
+	module.exports = __webpack_require__(42);
 
 /***/ },
 /* 13 */
@@ -565,7 +571,7 @@
 	 * Module dependencies
 	 */
 
-	var debug = __webpack_require__(43)('jsonp');
+	var debug = __webpack_require__(55)('jsonp');
 
 	/**
 	 * Module exports.
@@ -675,7 +681,7 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(18)();
-	exports.push([module.id, ".profile {\n  width: 400px;\n  text-align: center;\n}\n\n.profile > img {\n  border-radius: 2px;\n}\n\n.profile > a {\n  display: block;\n}", ""]);
+	exports.push([module.id, ".profile {\n  position: relative;\n}\n\n.profile .profile-avatar {\n  position: absolute;\n  top: 0;\n  left: 0;\n}\n\n.profile .profile-avatar .avatar-container {\n  display: inline-block;\n}\n\n.profile .profile-avatar .avatar-container img {\n  width: 180px;\n  height: 180px;\n  border-radius: 90px;\n}\n\n.profile .profile-body {\n  height: 240px;\n  overflow: hidden;\n  padding-top: 0;\n  margin-left: 240px;\n}\n\n.profile .profile-body .heading {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 1.5rem;\n  line-height: 1.35;\n  color: #231f20;\n  font-family: \"AtlasGroteskBold\", \"Helvetica Neue\", \"HelveticaNeue\", \"Helvetica\", \"Arial\", sans-serif;\n  font-style: normal;\n  font-weight: 700;\n  text-rendering: optimizeLegibility;\n}\n\n.profile .profile-body .heading a {\n  background: transparent;\n  color: inherit;\n  text-decoration: none;\n}\n\n.profile .profile-deets {\n  color: #999999;\n}\n\n.profile .profile-deets span {\n  margin-left: 5px;\n}", ""]);
 
 /***/ },
 /* 16 */
@@ -705,7 +711,7 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(18)();
-	exports.push([module.id, "", ""]);
+	exports.push([module.id, ".post-avatar {\n  position: absolute;\n  top: 0;\n  left: 0;\n  margin-bottom: 0;\n}\n\n.post .avatar-container {\n  display: inline-block;\n}\n\n.post .avatar-container img {\n  width: 50px;\n  height: 50px;\n  border-radius: 25px;\n}\n\n.post-content {\n  display: block;\n  word-wrap: break-word;\n}\n\n.post {\n  position: relative;\n  padding-left: 90px;\n}\n\n.post>div:last-child {\n  margin-bottom: 3.75rem;\n}\n\n.post p {\n  margin-top: 0;\n}\n\n.post p, .post img {\n  margin-bottom: 1.25rem;\n}\n\n.postbar {\n  color: #c7c7c7;\n}\n\nspan.like-count,\nspan.reposts-count,\nspan.comments-count {\n  padding-left: 5px;\n}\n\n.post .postbar {\n  margin-top: -0.5rem;\n}", ""]);
 
 /***/ },
 /* 18 */
@@ -752,27 +758,27 @@
 
 	"use strict";
 
-	var DOMPropertyOperations = __webpack_require__(22);
-	var EventPluginUtils = __webpack_require__(23);
-	var ReactChildren = __webpack_require__(24);
-	var ReactComponent = __webpack_require__(25);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactContext = __webpack_require__(27);
-	var ReactCurrentOwner = __webpack_require__(28);
-	var ReactDescriptor = __webpack_require__(29);
-	var ReactDOM = __webpack_require__(30);
-	var ReactDOMComponent = __webpack_require__(31);
-	var ReactDefaultInjection = __webpack_require__(32);
-	var ReactInstanceHandles = __webpack_require__(33);
-	var ReactMount = __webpack_require__(34);
-	var ReactMultiChild = __webpack_require__(35);
-	var ReactPerf = __webpack_require__(36);
-	var ReactPropTypes = __webpack_require__(37);
-	var ReactServerRendering = __webpack_require__(38);
-	var ReactTextComponent = __webpack_require__(39);
+	var DOMPropertyOperations = __webpack_require__(21);
+	var EventPluginUtils = __webpack_require__(22);
+	var ReactChildren = __webpack_require__(23);
+	var ReactComponent = __webpack_require__(24);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactContext = __webpack_require__(26);
+	var ReactCurrentOwner = __webpack_require__(27);
+	var ReactDescriptor = __webpack_require__(28);
+	var ReactDOM = __webpack_require__(29);
+	var ReactDOMComponent = __webpack_require__(30);
+	var ReactDefaultInjection = __webpack_require__(31);
+	var ReactInstanceHandles = __webpack_require__(32);
+	var ReactMount = __webpack_require__(33);
+	var ReactMultiChild = __webpack_require__(34);
+	var ReactPerf = __webpack_require__(35);
+	var ReactPropTypes = __webpack_require__(36);
+	var ReactServerRendering = __webpack_require__(37);
+	var ReactTextComponent = __webpack_require__(38);
 
-	var onlyChild = __webpack_require__(40);
-	var warning = __webpack_require__(41);
+	var onlyChild = __webpack_require__(39);
+	var warning = __webpack_require__(40);
 
 	ReactDefaultInjection.inject();
 
@@ -839,7 +845,7 @@
 	};
 
 	if ("production" !== process.env.NODE_ENV) {
-	  var ExecutionEnvironment = __webpack_require__(42);
+	  var ExecutionEnvironment = __webpack_require__(41);
 	  if (ExecutionEnvironment.canUseDOM &&
 	      window.top === window.self &&
 	      navigator.userAgent.indexOf('Chrome') > -1) {
@@ -884,106 +890,11 @@
 
 	module.exports = React;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 20 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {var Promise = __webpack_require__(160).Promise;
-	var defaults = __webpack_require__(45);
-	var utils = __webpack_require__(46);
-	var spread = __webpack_require__(47);
-
-	var axios = module.exports = function axios(config) {
-	  config = utils.merge({
-	    method: 'get',
-	    transformRequest: defaults.transformRequest,
-	    transformResponse: defaults.transformResponse
-	  }, config);
-
-	  // Don't allow overriding defaults.withCredentials
-	  config.withCredentials = config.withCredentials || defaults.withCredentials;
-
-	  var promise = new Promise(function (resolve, reject) {
-	    try {
-	      // For browsers use XHR adapter
-	      if (typeof window !== 'undefined') {
-	        __webpack_require__(48)(resolve, reject, config);
-	      }
-	      // For node use HTTP adapter
-	      else if (typeof process !== 'undefined') {
-	        __webpack_require__(48)(resolve, reject, config);
-	      }
-	    } catch (e) {
-	      reject(e);
-	    }
-	  });
-
-	  // Provide alias for success
-	  promise.success = function success(fn) {
-	    promise.then(function(response) {
-	      fn(response.data, response.status, response.headers, response.config);
-	    });
-	    return promise;
-	  };
-
-	  // Provide alias for error
-	  promise.error = function error(fn) {
-	    promise.then(null, function(response) {
-	      fn(response.data, response.status, response.headers, response.config);
-	    });
-	    return promise;
-	  };
-
-	  return promise;
-	};
-
-	// Expose defaults
-	axios.defaults = defaults;
-
-	// Expose all/spread
-	axios.all = function (promises) {
-	  return Promise.all(promises);
-	};
-	axios.spread = spread;
-
-	// Provide aliases for supported request methods
-	createShortMethods('delete', 'get', 'head');
-	createShortMethodsWithData('post', 'put', 'patch');
-
-	function createShortMethods() {
-	  utils.forEach(arguments, function (method) {
-	    axios[method] = function (url, config) {
-	      return axios(utils.merge(config || {}, {
-	        method: method,
-	        url: url
-	      }));
-	    };
-	  });
-	}
-
-	function createShortMethodsWithData() {
-	  utils.forEach(arguments, function (method) {
-	    axios[method] = function (url, data, config) {
-	      return axios(utils.merge(config || {}, {
-	        method: method,
-	        url: url,
-	        data: data
-	      }));
-	    };
-	  });
-	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
+/* 20 */,
 /* 21 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAAeCAYAAABpP1GsAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpENzgwMTM2QUREQzYxMUUxOUI5OUVGNDkwMjE5MEQ4MCIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpENzgwMTM2QkREQzYxMUUxOUI5OUVGNDkwMjE5MEQ4MCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkQ3ODAxMzY4RERDNjExRTE5Qjk5RUY0OTAyMTkwRDgwIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkQ3ODAxMzY5RERDNjExRTE5Qjk5RUY0OTAyMTkwRDgwIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+SqiMsAAABgFJREFUeNrsXE9sFFUY/83MFqRQyQpYJVHJYgzxgOJyINFLtcbIRRKzTTyZGNPG6IlLe/PgpT2oB6JJ68mLiW28qRi7phgNoLIGibFIw4JgFf+0AzVAy+7O883u98LHc2Zn+2epbb9f8ro77/+8eb/3fb83b+sopSAQCKLhyhAIBPFIWdfP6tChQ6sOqgltXdThiA5HZegFK5EgHTi49RXcuLoecJaWIEHZw5YdU3jjDIQggpVKkNYqOUqzLU1prXR9nf57hwy7YKVqEFXXcoS5nZg0p07azUyqCa6bQHDbLEj85J8LLQCRJLQDHksLMatDmeLFRgjWFEHCNT+lWeG2EAvmbk2rhMTQVXmhdAnTb4ihEKwBghjLEWiz0PEC8MgBKP8cyseG4J47Dc8ly+Fpk/HMy8Cup4Ci1t+fvaPLXQM2CE8Eq50gQWg0FIL2+4E9B+BU5lC5MgH8NgHvagVKkyTY8TDcjleh2nfpvD5c5dQMjUCwykT6rQhIb6wLoI5/iOCnT6puVGrH4/DatgFTOq11I9S+/cDdD0JdPIlg7D3tcl1bKh0yTDao14rPUvx0nTJh6Iypt5/lUVQmzdKnKT5L12HaWYobjGjHDmnqc1TaqNUWRy+7rwyLT1t18z7a4QSVNde8ntGIuLPWGGdYPkXpvUKQOISiW0sPZ/wMvOMfaaNSgZd5Au62h4DrOn7TFni7OuE4KbinDsMtfKtHVdVs0+13r9IWKXJWeibmgedoYqXrEDUsm9ehZ5F97GQkq3cfw4too0gB1nhkI+LMPRfo+6iVnqEFZVAIUi+j9ppU8WtUTh+Gs/kBBLv3o7R7q/58Ek77oyhf+gHBuCaIqsCptx3cXHTTQ87HEGSQHng4GbqolzspfyYiv1nVO2nCdUWk9+HmJrcJPksfYfFPs35lEu4l2+DKvddqey/F5yNIkY6J8yl/jo2Pqa+HrgdEg8TtYIXD1Ka/Tk5Ajb4NbN8D7HsRuGsrcK/+7mk/7Mt3gYljwCai3fKIc7PyDbHrbrrOsHTz0MEmvh9TXz8r4y+yf3mqI13HWoHl6acyxQW0VbDGJMvqtuMKljUxVmOAxm5IXKwkaDfL0y5V6sz3UOe/gtt2D1qyL8Hd/hjUXz/CGz8K73K5mq8JRyD7I/xsRLhPZqUfoRA1QYpsQvAJGacJjJXIN9g3VWfy81XcTyBSnlm9ejgRMzZ5Ni722GSsBSPPFpYi01DTFPqFIEkgwa5m/0F5/HMEM5NV06Ju6OufR6Fmfq8J+mDZ7iXHXBrzsH1rUi5E0yDG9ZpPv7hAN31MsgpdlCe7wAnKdUiG6ilYliVrEcQnF22AlTVkGRaCJCF8r1HSIv27L+D8QgvV1Hl433wK94pfOwOMprhXfTF+tq0/YO0eGVemm02MDJsYNhGi2i1Q/sEG++YkWIehGC0T5WYNWPc2Hw3CF4teuscCI4PRa7ZF9emedlJ9A4zoaSFIwo6WU9KFfr0E5/If1Sjn+gzcyfPA1aDB81hNQTZB9OaYe2F2pXKMMGbLtjvC1TH6pDthosbBiPShBDLGkWlkkZqHu5kFZlls62HyTVubA0VGHF8I0ohgb9HaPkX63nXpGAqW8615jj1svprutAhkxDknxVnLP49yVfqY3sgsUIP00QTLzZNoPQnu2Ik6+izPJrXPyJCPEPNcI/F7GrQ2PoQgiSSpkoLeBIY7WF7Lch8psfVHlB+es3xse5XfW2eFHKJJtZj3E9xl6p2HJfEZQReCQgQRChFWxpC4x4oz7fetRYI41m/SD+G11m763UY0nWZCC7IZOPg+sPs54M9x4M3ngQv6884kyXufj/4Lh/S31yEQrACk5pVbUQlvFjj1MVCpAJMngdmp2g6WAzmcKFjjBKl6VnPAEW1Bxj5A9VSiV5KTuwIhSM0pIyKUS7XgYbnOXQkE/0OCGCKsR81qBDKIgtUL97/2QTX+JmPe5FDL96ZEIFgCC3IN6zbS72mb8G9/WjaEv8WdlWEXrFSCjOGtv8PPZv/jOIFgRcCR/80rEDSuQQQCAcO/AgwAZ3DtN445c4EAAAAASUVORK5CYII="
-
-/***/ },
-/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -1007,11 +918,11 @@
 
 	"use strict";
 
-	var DOMProperty = __webpack_require__(49);
+	var DOMProperty = __webpack_require__(44);
 
-	var escapeTextForBrowser = __webpack_require__(50);
-	var memoizeStringOnly = __webpack_require__(51);
-	var warning = __webpack_require__(41);
+	var escapeTextForBrowser = __webpack_require__(45);
+	var memoizeStringOnly = __webpack_require__(46);
+	var warning = __webpack_require__(40);
 
 	function shouldIgnoreValue(name, value) {
 	  return value == null ||
@@ -1180,10 +1091,10 @@
 
 	module.exports = DOMPropertyOperations;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 23 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -1206,9 +1117,9 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
+	var EventConstants = __webpack_require__(47);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Injected dependencies:
@@ -1411,10 +1322,10 @@
 
 	module.exports = EventPluginUtils;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 24 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -1437,10 +1348,10 @@
 
 	"use strict";
 
-	var PooledClass = __webpack_require__(69);
+	var PooledClass = __webpack_require__(53);
 
-	var traverseAllChildren = __webpack_require__(70);
-	var warning = __webpack_require__(41);
+	var traverseAllChildren = __webpack_require__(54);
+	var warning = __webpack_require__(40);
 
 	var twoArgumentPooler = PooledClass.twoArgumentPooler;
 	var threeArgumentPooler = PooledClass.threeArgumentPooler;
@@ -1571,10 +1482,10 @@
 
 	module.exports = ReactChildren;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 25 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -1597,12 +1508,12 @@
 
 	"use strict";
 
-	var ReactDescriptor = __webpack_require__(29);
-	var ReactOwner = __webpack_require__(58);
-	var ReactUpdates = __webpack_require__(62);
+	var ReactDescriptor = __webpack_require__(28);
+	var ReactOwner = __webpack_require__(49);
+	var ReactUpdates = __webpack_require__(50);
 
-	var invariant = __webpack_require__(54);
-	var keyMirror = __webpack_require__(64);
+	var invariant = __webpack_require__(48);
+	var keyMirror = __webpack_require__(51);
 	var merge = __webpack_require__(52);
 
 	/**
@@ -2024,10 +1935,10 @@
 
 	module.exports = ReactComponent;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 26 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -2050,29 +1961,29 @@
 
 	"use strict";
 
-	var ReactComponent = __webpack_require__(25);
-	var ReactContext = __webpack_require__(27);
-	var ReactCurrentOwner = __webpack_require__(28);
-	var ReactDescriptor = __webpack_require__(29);
-	var ReactDescriptorValidator = __webpack_require__(55);
-	var ReactEmptyComponent = __webpack_require__(56);
-	var ReactErrorUtils = __webpack_require__(57);
-	var ReactOwner = __webpack_require__(58);
-	var ReactPerf = __webpack_require__(36);
+	var ReactComponent = __webpack_require__(24);
+	var ReactContext = __webpack_require__(26);
+	var ReactCurrentOwner = __webpack_require__(27);
+	var ReactDescriptor = __webpack_require__(28);
+	var ReactDescriptorValidator = __webpack_require__(56);
+	var ReactEmptyComponent = __webpack_require__(57);
+	var ReactErrorUtils = __webpack_require__(58);
+	var ReactOwner = __webpack_require__(49);
+	var ReactPerf = __webpack_require__(35);
 	var ReactPropTransferer = __webpack_require__(59);
 	var ReactPropTypeLocations = __webpack_require__(60);
 	var ReactPropTypeLocationNames = __webpack_require__(61);
-	var ReactUpdates = __webpack_require__(62);
+	var ReactUpdates = __webpack_require__(50);
 
-	var instantiateReactComponent = __webpack_require__(63);
-	var invariant = __webpack_require__(54);
-	var keyMirror = __webpack_require__(64);
+	var instantiateReactComponent = __webpack_require__(62);
+	var invariant = __webpack_require__(48);
+	var keyMirror = __webpack_require__(51);
 	var merge = __webpack_require__(52);
-	var mixInto = __webpack_require__(65);
-	var monitorCodeUse = __webpack_require__(66);
-	var mapObject = __webpack_require__(67);
-	var shouldUpdateReactComponent = __webpack_require__(68);
-	var warning = __webpack_require__(41);
+	var mixInto = __webpack_require__(63);
+	var monitorCodeUse = __webpack_require__(64);
+	var mapObject = __webpack_require__(65);
+	var shouldUpdateReactComponent = __webpack_require__(66);
+	var warning = __webpack_require__(40);
 
 	/**
 	 * Policies that describe methods in `ReactCompositeComponentInterface`.
@@ -3456,10 +3367,10 @@
 
 	module.exports = ReactCompositeComponent;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 27 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -3532,7 +3443,7 @@
 
 
 /***/ },
-/* 28 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -3577,7 +3488,7 @@
 
 
 /***/ },
-/* 29 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -3600,11 +3511,11 @@
 
 	"use strict";
 
-	var ReactContext = __webpack_require__(27);
-	var ReactCurrentOwner = __webpack_require__(28);
+	var ReactContext = __webpack_require__(26);
+	var ReactCurrentOwner = __webpack_require__(27);
 
 	var merge = __webpack_require__(52);
-	var warning = __webpack_require__(41);
+	var warning = __webpack_require__(40);
 
 	/**
 	 * Warn for mutations.
@@ -3832,10 +3743,10 @@
 
 	module.exports = ReactDescriptor;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 30 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -3859,12 +3770,12 @@
 
 	"use strict";
 
-	var ReactDescriptor = __webpack_require__(29);
-	var ReactDescriptorValidator = __webpack_require__(55);
-	var ReactDOMComponent = __webpack_require__(31);
+	var ReactDescriptor = __webpack_require__(28);
+	var ReactDescriptorValidator = __webpack_require__(56);
+	var ReactDOMComponent = __webpack_require__(30);
 
-	var mergeInto = __webpack_require__(71);
-	var mapObject = __webpack_require__(67);
+	var mergeInto = __webpack_require__(67);
+	var mapObject = __webpack_require__(65);
 
 	/**
 	 * Creates a new React class that is idempotent and capable of containing other
@@ -4050,10 +3961,10 @@
 
 	module.exports = ReactDOM;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 31 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -4077,21 +3988,21 @@
 
 	"use strict";
 
-	var CSSPropertyOperations = __webpack_require__(101);
-	var DOMProperty = __webpack_require__(49);
-	var DOMPropertyOperations = __webpack_require__(22);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactComponent = __webpack_require__(25);
-	var ReactBrowserEventEmitter = __webpack_require__(102);
-	var ReactMount = __webpack_require__(34);
-	var ReactMultiChild = __webpack_require__(35);
-	var ReactPerf = __webpack_require__(36);
+	var CSSPropertyOperations = __webpack_require__(94);
+	var DOMProperty = __webpack_require__(44);
+	var DOMPropertyOperations = __webpack_require__(21);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactComponent = __webpack_require__(24);
+	var ReactBrowserEventEmitter = __webpack_require__(95);
+	var ReactMount = __webpack_require__(33);
+	var ReactMultiChild = __webpack_require__(34);
+	var ReactPerf = __webpack_require__(35);
 
-	var escapeTextForBrowser = __webpack_require__(50);
-	var invariant = __webpack_require__(54);
-	var keyOf = __webpack_require__(103);
+	var escapeTextForBrowser = __webpack_require__(45);
+	var invariant = __webpack_require__(48);
+	var keyOf = __webpack_require__(96);
 	var merge = __webpack_require__(52);
-	var mixInto = __webpack_require__(65);
+	var mixInto = __webpack_require__(63);
 
 	var deleteListener = ReactBrowserEventEmitter.deleteListener;
 	var listenTo = ReactBrowserEventEmitter.listenTo;
@@ -4475,10 +4386,10 @@
 
 	module.exports = ReactDOMComponent;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 32 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -4501,37 +4412,37 @@
 
 	"use strict";
 
-	var BeforeInputEventPlugin = __webpack_require__(75);
-	var ChangeEventPlugin = __webpack_require__(76);
-	var ClientReactRootIndex = __webpack_require__(77);
-	var CompositionEventPlugin = __webpack_require__(78);
-	var DefaultEventPluginOrder = __webpack_require__(79);
-	var EnterLeaveEventPlugin = __webpack_require__(80);
-	var ExecutionEnvironment = __webpack_require__(42);
-	var HTMLDOMPropertyConfig = __webpack_require__(81);
-	var MobileSafariClickEventPlugin = __webpack_require__(82);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
+	var BeforeInputEventPlugin = __webpack_require__(68);
+	var ChangeEventPlugin = __webpack_require__(69);
+	var ClientReactRootIndex = __webpack_require__(70);
+	var CompositionEventPlugin = __webpack_require__(71);
+	var DefaultEventPluginOrder = __webpack_require__(72);
+	var EnterLeaveEventPlugin = __webpack_require__(73);
+	var ExecutionEnvironment = __webpack_require__(41);
+	var HTMLDOMPropertyConfig = __webpack_require__(74);
+	var MobileSafariClickEventPlugin = __webpack_require__(75);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
 	var ReactComponentBrowserEnvironment =
-	  __webpack_require__(84);
-	var ReactDefaultBatchingStrategy = __webpack_require__(85);
-	var ReactDOM = __webpack_require__(30);
-	var ReactDOMButton = __webpack_require__(86);
-	var ReactDOMForm = __webpack_require__(87);
-	var ReactDOMImg = __webpack_require__(88);
-	var ReactDOMInput = __webpack_require__(89);
-	var ReactDOMOption = __webpack_require__(90);
-	var ReactDOMSelect = __webpack_require__(91);
-	var ReactDOMTextarea = __webpack_require__(92);
-	var ReactEventListener = __webpack_require__(93);
-	var ReactInjection = __webpack_require__(94);
-	var ReactInstanceHandles = __webpack_require__(33);
-	var ReactMount = __webpack_require__(34);
-	var SelectEventPlugin = __webpack_require__(95);
-	var ServerReactRootIndex = __webpack_require__(96);
-	var SimpleEventPlugin = __webpack_require__(97);
-	var SVGDOMPropertyConfig = __webpack_require__(98);
+	  __webpack_require__(77);
+	var ReactDefaultBatchingStrategy = __webpack_require__(78);
+	var ReactDOM = __webpack_require__(29);
+	var ReactDOMButton = __webpack_require__(79);
+	var ReactDOMForm = __webpack_require__(80);
+	var ReactDOMImg = __webpack_require__(81);
+	var ReactDOMInput = __webpack_require__(82);
+	var ReactDOMOption = __webpack_require__(83);
+	var ReactDOMSelect = __webpack_require__(84);
+	var ReactDOMTextarea = __webpack_require__(85);
+	var ReactEventListener = __webpack_require__(86);
+	var ReactInjection = __webpack_require__(87);
+	var ReactInstanceHandles = __webpack_require__(32);
+	var ReactMount = __webpack_require__(33);
+	var SelectEventPlugin = __webpack_require__(88);
+	var ServerReactRootIndex = __webpack_require__(89);
+	var SimpleEventPlugin = __webpack_require__(90);
+	var SVGDOMPropertyConfig = __webpack_require__(91);
 
-	var createFullPageComponent = __webpack_require__(99);
+	var createFullPageComponent = __webpack_require__(92);
 
 	function inject() {
 	  ReactInjection.EventEmitter.injectReactEventListener(
@@ -4600,7 +4511,7 @@
 	  if ("production" !== process.env.NODE_ENV) {
 	    var url = (ExecutionEnvironment.canUseDOM && window.location.href) || '';
 	    if ((/[?&]react_perf\b/).test(url)) {
-	      var ReactDefaultPerf = __webpack_require__(100);
+	      var ReactDefaultPerf = __webpack_require__(93);
 	      ReactDefaultPerf.start();
 	    }
 	  }
@@ -4610,10 +4521,10 @@
 	  inject: inject
 	};
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 33 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -4637,9 +4548,9 @@
 
 	"use strict";
 
-	var ReactRootIndex = __webpack_require__(72);
+	var ReactRootIndex = __webpack_require__(97);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	var SEPARATOR = '.';
 	var SEPARATOR_LENGTH = SEPARATOR.length;
@@ -4955,10 +4866,10 @@
 
 	module.exports = ReactInstanceHandles;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 34 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -4981,19 +4892,19 @@
 
 	"use strict";
 
-	var DOMProperty = __webpack_require__(49);
-	var ReactBrowserEventEmitter = __webpack_require__(102);
-	var ReactCurrentOwner = __webpack_require__(28);
-	var ReactDescriptor = __webpack_require__(29);
-	var ReactInstanceHandles = __webpack_require__(33);
-	var ReactPerf = __webpack_require__(36);
+	var DOMProperty = __webpack_require__(44);
+	var ReactBrowserEventEmitter = __webpack_require__(95);
+	var ReactCurrentOwner = __webpack_require__(27);
+	var ReactDescriptor = __webpack_require__(28);
+	var ReactInstanceHandles = __webpack_require__(32);
+	var ReactPerf = __webpack_require__(35);
 
-	var containsNode = __webpack_require__(105);
-	var getReactRootElementInContainer = __webpack_require__(106);
-	var instantiateReactComponent = __webpack_require__(63);
-	var invariant = __webpack_require__(54);
-	var shouldUpdateReactComponent = __webpack_require__(68);
-	var warning = __webpack_require__(41);
+	var containsNode = __webpack_require__(98);
+	var getReactRootElementInContainer = __webpack_require__(99);
+	var instantiateReactComponent = __webpack_require__(62);
+	var invariant = __webpack_require__(48);
+	var shouldUpdateReactComponent = __webpack_require__(66);
+	var warning = __webpack_require__(40);
 
 	var SEPARATOR = ReactInstanceHandles.SEPARATOR;
 
@@ -5643,10 +5554,10 @@
 
 	module.exports = ReactMount;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 35 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -5670,12 +5581,12 @@
 
 	"use strict";
 
-	var ReactComponent = __webpack_require__(25);
-	var ReactMultiChildUpdateTypes = __webpack_require__(73);
+	var ReactComponent = __webpack_require__(24);
+	var ReactMultiChildUpdateTypes = __webpack_require__(100);
 
-	var flattenChildren = __webpack_require__(74);
-	var instantiateReactComponent = __webpack_require__(63);
-	var shouldUpdateReactComponent = __webpack_require__(68);
+	var flattenChildren = __webpack_require__(101);
+	var instantiateReactComponent = __webpack_require__(62);
+	var shouldUpdateReactComponent = __webpack_require__(66);
 
 	/**
 	 * Updating children of a component may trigger recursive updates. The depth is
@@ -6082,7 +5993,7 @@
 
 
 /***/ },
-/* 36 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -6171,10 +6082,10 @@
 
 	module.exports = ReactPerf;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 37 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -6197,7 +6108,7 @@
 
 	"use strict";
 
-	var ReactDescriptor = __webpack_require__(29);
+	var ReactDescriptor = __webpack_require__(28);
 	var ReactPropTypeLocationNames = __webpack_require__(61);
 
 	var emptyFunction = __webpack_require__(104);
@@ -6523,7 +6434,7 @@
 
 
 /***/ },
-/* 38 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -6546,14 +6457,14 @@
 	 */
 	"use strict";
 
-	var ReactDescriptor = __webpack_require__(29);
-	var ReactInstanceHandles = __webpack_require__(33);
-	var ReactMarkupChecksum = __webpack_require__(107);
+	var ReactDescriptor = __webpack_require__(28);
+	var ReactInstanceHandles = __webpack_require__(32);
+	var ReactMarkupChecksum = __webpack_require__(102);
 	var ReactServerRenderingTransaction =
-	  __webpack_require__(108);
+	  __webpack_require__(103);
 
-	var instantiateReactComponent = __webpack_require__(63);
-	var invariant = __webpack_require__(54);
+	var instantiateReactComponent = __webpack_require__(62);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * @param {ReactComponent} component
@@ -6616,10 +6527,10 @@
 	  renderComponentToStaticMarkup: renderComponentToStaticMarkup
 	};
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 39 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -6643,13 +6554,13 @@
 
 	"use strict";
 
-	var DOMPropertyOperations = __webpack_require__(22);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactComponent = __webpack_require__(25);
-	var ReactDescriptor = __webpack_require__(29);
+	var DOMPropertyOperations = __webpack_require__(21);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactComponent = __webpack_require__(24);
+	var ReactDescriptor = __webpack_require__(28);
 
-	var escapeTextForBrowser = __webpack_require__(50);
-	var mixInto = __webpack_require__(65);
+	var escapeTextForBrowser = __webpack_require__(45);
+	var mixInto = __webpack_require__(63);
 
 	/**
 	 * Text nodes violate a couple assumptions that React makes about components:
@@ -6732,7 +6643,7 @@
 
 
 /***/ },
-/* 40 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -6754,9 +6665,9 @@
 	 */
 	"use strict";
 
-	var ReactDescriptor = __webpack_require__(29);
+	var ReactDescriptor = __webpack_require__(28);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Returns the first child in a collection of children and verifies that there
@@ -6779,10 +6690,10 @@
 
 	module.exports = onlyChild;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 41 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -6834,10 +6745,10 @@
 
 	module.exports = warning;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 42 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -6893,160 +6804,97 @@
 
 
 /***/ },
-/* 43 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
-	
-	/**
-	 * This is the web browser implementation of `debug()`.
-	 *
-	 * Expose `debug()` as the module.
-	 */
+	/* WEBPACK VAR INJECTION */(function(process) {var Promise = __webpack_require__(160).Promise;
+	var defaults = __webpack_require__(105);
+	var utils = __webpack_require__(106);
+	var spread = __webpack_require__(107);
 
-	exports = module.exports = __webpack_require__(109);
-	exports.log = log;
-	exports.formatArgs = formatArgs;
-	exports.save = save;
-	exports.load = load;
-	exports.useColors = useColors;
+	var axios = module.exports = function axios(config) {
+	  config = utils.merge({
+	    method: 'get',
+	    transformRequest: defaults.transformRequest,
+	    transformResponse: defaults.transformResponse
+	  }, config);
 
-	/**
-	 * Colors.
-	 */
+	  // Don't allow overriding defaults.withCredentials
+	  config.withCredentials = config.withCredentials || defaults.withCredentials;
 
-	exports.colors = [
-	  'lightseagreen',
-	  'forestgreen',
-	  'goldenrod',
-	  'dodgerblue',
-	  'darkorchid',
-	  'crimson'
-	];
-
-	/**
-	 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
-	 * and the Firebug extension (any Firefox version) are known
-	 * to support "%c" CSS customizations.
-	 *
-	 * TODO: add a `localStorage` variable to explicitly enable/disable colors
-	 */
-
-	function useColors() {
-	  // is webkit? http://stackoverflow.com/a/16459606/376773
-	  return ('WebkitAppearance' in document.documentElement.style) ||
-	    // is firebug? http://stackoverflow.com/a/398120/376773
-	    (window.console && (console.firebug || (console.exception && console.table))) ||
-	    // is firefox >= v31?
-	    // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-	    (navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31);
-	}
-
-	/**
-	 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
-	 */
-
-	exports.formatters.j = function(v) {
-	  return JSON.stringify(v);
-	};
-
-
-	/**
-	 * Colorize log arguments if enabled.
-	 *
-	 * @api public
-	 */
-
-	function formatArgs() {
-	  var args = arguments;
-	  var useColors = this.useColors;
-
-	  args[0] = (useColors ? '%c' : '')
-	    + this.namespace
-	    + (useColors ? ' %c' : ' ')
-	    + args[0]
-	    + (useColors ? '%c ' : ' ')
-	    + '+' + exports.humanize(this.diff);
-
-	  if (!useColors) return args;
-
-	  var c = 'color: ' + this.color;
-	  args = [args[0], c, 'color: inherit'].concat(Array.prototype.slice.call(args, 1));
-
-	  // the final "%c" is somewhat tricky, because there could be other
-	  // arguments passed either before or after the %c, so we need to
-	  // figure out the correct index to insert the CSS into
-	  var index = 0;
-	  var lastC = 0;
-	  args[0].replace(/%[a-z%]/g, function(match) {
-	    if ('%%' === match) return;
-	    index++;
-	    if ('%c' === match) {
-	      // we only are interested in the *last* %c
-	      // (the user may have provided their own)
-	      lastC = index;
+	  var promise = new Promise(function (resolve, reject) {
+	    try {
+	      // For browsers use XHR adapter
+	      if (typeof window !== 'undefined') {
+	        __webpack_require__(108)(resolve, reject, config);
+	      }
+	      // For node use HTTP adapter
+	      else if (typeof process !== 'undefined') {
+	        __webpack_require__(108)(resolve, reject, config);
+	      }
+	    } catch (e) {
+	      reject(e);
 	    }
 	  });
 
-	  args.splice(lastC, 0, c);
-	  return args;
+	  // Provide alias for success
+	  promise.success = function success(fn) {
+	    promise.then(function(response) {
+	      fn(response.data, response.status, response.headers, response.config);
+	    });
+	    return promise;
+	  };
+
+	  // Provide alias for error
+	  promise.error = function error(fn) {
+	    promise.then(null, function(response) {
+	      fn(response.data, response.status, response.headers, response.config);
+	    });
+	    return promise;
+	  };
+
+	  return promise;
+	};
+
+	// Expose defaults
+	axios.defaults = defaults;
+
+	// Expose all/spread
+	axios.all = function (promises) {
+	  return Promise.all(promises);
+	};
+	axios.spread = spread;
+
+	// Provide aliases for supported request methods
+	createShortMethods('delete', 'get', 'head');
+	createShortMethodsWithData('post', 'put', 'patch');
+
+	function createShortMethods() {
+	  utils.forEach(arguments, function (method) {
+	    axios[method] = function (url, config) {
+	      return axios(utils.merge(config || {}, {
+	        method: method,
+	        url: url
+	      }));
+	    };
+	  });
 	}
 
-	/**
-	 * Invokes `console.log()` when available.
-	 * No-op when `console.log` is not a "function".
-	 *
-	 * @api public
-	 */
-
-	function log() {
-	  // This hackery is required for IE8,
-	  // where the `console.log` function doesn't have 'apply'
-	  return 'object' == typeof console
-	    && 'function' == typeof console.log
-	    && Function.prototype.apply.call(console.log, console, arguments);
+	function createShortMethodsWithData() {
+	  utils.forEach(arguments, function (method) {
+	    axios[method] = function (url, data, config) {
+	      return axios(utils.merge(config || {}, {
+	        method: method,
+	        url: url,
+	        data: data
+	      }));
+	    };
+	  });
 	}
-
-	/**
-	 * Save `namespaces`.
-	 *
-	 * @param {String} namespaces
-	 * @api private
-	 */
-
-	function save(namespaces) {
-	  try {
-	    if (null == namespaces) {
-	      localStorage.removeItem('debug');
-	    } else {
-	      localStorage.debug = namespaces;
-	    }
-	  } catch(e) {}
-	}
-
-	/**
-	 * Load `namespaces`.
-	 *
-	 * @return {String} returns the previously persisted debug modes
-	 * @api private
-	 */
-
-	function load() {
-	  var r;
-	  try {
-	    r = localStorage.debug;
-	  } catch(e) {}
-	  return r;
-	}
-
-	/**
-	 * Enable namespaces listed in `localStorage.debug` initially.
-	 */
-
-	exports.enable(load());
-
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 44 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// shim for using process in browser
@@ -7115,350 +6963,7 @@
 
 
 /***/ },
-/* 45 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var utils = __webpack_require__(46);
-
-	var JSON_START = /^\s*(\[|\{[^\{])/;
-	var JSON_END = /[\}\]]\s*$/;
-	var PROTECTION_PREFIX = /^\)\]\}',?\n/;
-	var CONTENT_TYPE_APPLICATION_JSON = {
-	  'Content-Type': 'application/json;charset=utf-8'
-	};
-
-	module.exports = {
-	  transformRequest: [function (data) {
-	    return utils.isObject(data) &&
-	          !utils.isFile(data) &&
-	          !utils.isBlob(data) ?
-	            JSON.stringify(data) : data;
-	  }],
-
-	  transformResponse: [function (data) {
-	    if (typeof data === 'string') {
-	      data = data.replace(PROTECTION_PREFIX, '');
-	      if (JSON_START.test(data) && JSON_END.test(data)) {
-	        data = JSON.parse(data);
-	      }
-	    }
-	    return data;
-	  }],
-
-	  headers: {
-	    common: {
-	      'Accept': 'application/json, text/plain, */*'
-	    },
-	    patch: utils.merge(CONTENT_TYPE_APPLICATION_JSON),
-	    post: utils.merge(CONTENT_TYPE_APPLICATION_JSON),
-	    put: utils.merge(CONTENT_TYPE_APPLICATION_JSON)
-	  },
-
-	  xsrfCookieName: 'XSRF-TOKEN',
-	  xsrfHeaderName: 'X-XSRF-TOKEN'
-	};
-
-/***/ },
-/* 46 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// utils is a library of generic helper functions non-specific to axios
-
-	var toString = Object.prototype.toString;
-
-	/**
-	 * Determine if a value is an Array
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is an Array, otherwise false
-	 */
-	function isArray(val) {
-	  return toString.call(val) === '[object Array]';
-	}
-
-	/**
-	 * Determine if a value is a String
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is a String, otherwise false
-	 */
-	function isString(val) {
-	  return typeof val === 'string';
-	}
-
-	/**
-	 * Determine if a value is a Number
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is a Number, otherwise false
-	 */
-	function isNumber(val) {
-	  return typeof val === 'number';
-	}
-
-	/**
-	 * Determine if a value is an Object
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is an Object, otherwise false
-	 */
-	function isObject(val) {
-	  return val !== null && typeof val === 'object';
-	}
-
-	/**
-	 * Determine if a value is a Date
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is a Date, otherwise false
-	 */
-	function isDate(val) {
-	  return toString.call(val) === '[object Date]';
-	}
-
-	/**
-	 * Determine if a value is a File
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is a File, otherwise false
-	 */
-	function isFile(val) {
-	  return toString.call(val) === '[object File]';
-	}
-
-	/**
-	 * Determine if a value is a Blob
-	 *
-	 * @param {Object} val The value to test
-	 * @returns {boolean} True if value is a Blob, otherwise false
-	 */
-	function isBlob(val) {
-	  return toString.call(val) === '[object Blob]';
-	}
-
-	/**
-	 * Trim excess whitespace off the beginning and end of a string
-	 *
-	 * @param {String} str The String to trim
-	 * @returns {String} The String freed of excess whitespace
-	 */
-	function trim(str) {
-	  return str.replace(/^\s*/, '').replace(/\s*$/, '');
-	}
-
-	/**
-	 * Iterate over an Array or an Object invoking a function for each item.
-	 *
-	 * If `obj` is an Array or arguments callback will be called passing
-	 * the value, index, and complete array for each item.
-	 *
-	 * If 'obj' is an Object callback will be called passing
-	 * the value, key, and complete object for each property.
-	 *
-	 * @param {Object|Array} obj The object to iterate
-	 * @param {Function} fn The callback to invoke for each item
-	 */
-	function forEach(obj, fn) {
-	  // Don't bother if no value provided
-	  if (obj === null || typeof obj === 'undefined') {
-	    return;
-	  }
-
-	  // Check if obj is array-like
-	  var isArray = obj.constructor === Array || typeof obj.callee === 'function';
-
-	  // Force an array if not already something iterable
-	  if (typeof obj !== 'object' && !isArray) {
-	    obj = [obj];
-	  }
-
-	  // Iterate over array values
-	  if (isArray) {
-	    for (var i=0, l=obj.length; i<l; i++) {
-	      fn.call(null, obj[i], i, obj);
-	    }
-	  }
-	  // Iterate over object keys
-	  else {
-	    for (var key in obj) {
-	      if (obj.hasOwnProperty(key)) {
-	        fn.call(null, obj[key], key, obj);
-	      }
-	    }
-	  }
-	}
-
-	/**
-	 * Accepts varargs expecting each argument to be an object, then
-	 * immutably merges the properties of each object and returns result.
-	 *
-	 * When multiple objects contain the same key the later object in
-	 * the arguments list will take precedence.
-	 *
-	 * Example:
-	 *
-	 * ```js
-	 * var result = merge({foo: 123}, {foo: 456});
-	 * console.log(result.foo); // outputs 456
-	 * ```
-	 *
-	 * @param {Object} obj1 Object to merge
-	 * @returns {Object} Result of all merge properties
-	 */
-	function merge(obj1/*, obj2, obj3, ...*/) {
-	  var result = {};
-	  forEach(arguments, function (obj) {
-	    forEach(obj, function (val, key) {
-	      result[key] = val;
-	    });
-	  });
-	  return result;
-	}
-
-	module.exports = {
-	  isArray: isArray,
-	  isString: isString,
-	  isNumber: isNumber,
-	  isObject: isObject,
-	  isDate: isDate,
-	  isFile: isFile,
-	  isBlob: isBlob,
-	  forEach: forEach,
-	  merge: merge,
-	  trim: trim
-	};
-
-/***/ },
-/* 47 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Syntactic sugar for invoking a function and expanding an array for arguments.
-	 *
-	 * Common use case would be to use `Function.prototype.apply`.
-	 *
-	 *  ```js
-	 *  function f(x, y, z) {}
-	 *  var args = [1, 2, 3];
-	 *  f.apply(null, args);
-	 *  ```
-	 *
-	 * With `spread` this example can be re-written.
-	 *
-	 *  ```js
-	 *  spread(function(x, y, z) {})([1, 2, 3]);
-	 *  ```
-	 *
-	 * @param {Function} callback
-	 * @returns {Function}
-	 */
-	module.exports = function spread(callback) {
-	  return function (arr) {
-	    callback.apply(null, arr);
-	  };
-	};
-
-/***/ },
-/* 48 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var buildUrl = __webpack_require__(110);
-	var cookies = __webpack_require__(111);
-	var defaults = __webpack_require__(45);
-	var parseHeaders = __webpack_require__(112);
-	var transformData = __webpack_require__(113);
-	var urlIsSameOrigin = __webpack_require__(114);
-	var utils = __webpack_require__(46);
-
-	module.exports = function xhrAdapter(resolve, reject, config) {
-	  // Transform request data
-	  var data = transformData(
-	    config.data,
-	    config.headers,
-	    config.transformRequest
-	  );
-
-	  // Merge headers
-	  var headers = utils.merge(
-	    defaults.headers.common,
-	    defaults.headers[config.method] || {},
-	    config.headers || {}
-	  );
-
-	  // Create the request
-	  var request = new(XMLHttpRequest || ActiveXObject)('Microsoft.XMLHTTP');
-	  request.open(config.method, buildUrl(config.url, config.params), true);
-
-	  // Listen for ready state
-	  request.onreadystatechange = function () {
-	    if (request && request.readyState === 4) {
-	      // Prepare the response
-	      var headers = parseHeaders(request.getAllResponseHeaders());
-	      var response = {
-	        data: transformData(
-	          request.responseText,
-	          headers,
-	          config.transformResponse
-	        ),
-	        status: request.status,
-	        headers: headers,
-	        config: config
-	      };
-
-	      // Resolve or reject the Promise based on the status
-	      (request.status >= 200 && request.status < 300
-	        ? resolve
-	        : reject)(response);
-
-	      // Clean up request
-	      request = null;
-	    }
-	  };
-
-	  // Add xsrf header
-	  var xsrfValue = urlIsSameOrigin(config.url)
-	    ? cookies.read(config.xsrfCookieName || defaults.xsrfCookieName)
-	    : undefined;
-	  if (xsrfValue) {
-	    headers[config.xsrfHeaderName || defaults.xsrfHeaderName] = xsrfValue;
-	  }
-
-	  // Add headers to the request
-	  utils.forEach(headers, function (val, key) {
-	    // Remove Content-Type if data is undefined
-	    if (!data && key.toLowerCase() === 'content-type') {
-	      delete headers[key];
-	    }
-	    // Otherwise add header to the request
-	    else {
-	      request.setRequestHeader(key, val);
-	    }
-	  });
-
-	  // Add withCredentials to request if needed
-	  if (config.withCredentials) {
-	    request.withCredentials = true;
-	  }
-
-	  // Add responseType to request if needed
-	  if (config.responseType) {
-	    try {
-	      request.responseType = config.responseType;
-	    } catch (e) {
-	      if (request.responseType !== 'json') {
-	        throw e;
-	      }
-	    }
-	  }
-
-	  // Send the request
-	  request.send(data);
-	};
-
-/***/ },
-/* 49 */
+/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -7484,7 +6989,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	var DOMPropertyInjection = {
 	  /**
@@ -7760,10 +7265,10 @@
 
 	module.exports = DOMProperty;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 50 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -7815,7 +7320,7 @@
 
 
 /***/ },
-/* 51 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -7860,50 +7365,7 @@
 
 
 /***/ },
-/* 52 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule merge
-	 */
-
-	"use strict";
-
-	var mergeInto = __webpack_require__(71);
-
-	/**
-	 * Shallow merges two structures into a return value, without mutating either.
-	 *
-	 * @param {?object} one Optional object with properties to merge from.
-	 * @param {?object} two Optional object with properties to merge from.
-	 * @return {object} The shallow extension of one by two.
-	 */
-	var merge = function(one, two) {
-	  var result = {};
-	  mergeInto(result, one);
-	  mergeInto(result, two);
-	  return result;
-	};
-
-	module.exports = merge;
-
-
-/***/ },
-/* 53 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -7926,7 +7388,7 @@
 
 	"use strict";
 
-	var keyMirror = __webpack_require__(64);
+	var keyMirror = __webpack_require__(51);
 
 	var PropagationPhases = keyMirror({bubbled: null, captured: null});
 
@@ -7986,7 +7448,7 @@
 
 
 /***/ },
-/* 54 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -8050,10 +7512,1035 @@
 
 	module.exports = invariant;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 49 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule ReactOwner
+	 */
+
+	"use strict";
+
+	var emptyObject = __webpack_require__(109);
+	var invariant = __webpack_require__(48);
+
+	/**
+	 * ReactOwners are capable of storing references to owned components.
+	 *
+	 * All components are capable of //being// referenced by owner components, but
+	 * only ReactOwner components are capable of //referencing// owned components.
+	 * The named reference is known as a "ref".
+	 *
+	 * Refs are available when mounted and updated during reconciliation.
+	 *
+	 *   var MyComponent = React.createClass({
+	 *     render: function() {
+	 *       return (
+	 *         <div onClick={this.handleClick}>
+	 *           <CustomComponent ref="custom" />
+	 *         </div>
+	 *       );
+	 *     },
+	 *     handleClick: function() {
+	 *       this.refs.custom.handleClick();
+	 *     },
+	 *     componentDidMount: function() {
+	 *       this.refs.custom.initialize();
+	 *     }
+	 *   });
+	 *
+	 * Refs should rarely be used. When refs are used, they should only be done to
+	 * control data that is not handled by React's data flow.
+	 *
+	 * @class ReactOwner
+	 */
+	var ReactOwner = {
+
+	  /**
+	   * @param {?object} object
+	   * @return {boolean} True if `object` is a valid owner.
+	   * @final
+	   */
+	  isValidOwner: function(object) {
+	    return !!(
+	      object &&
+	      typeof object.attachRef === 'function' &&
+	      typeof object.detachRef === 'function'
+	    );
+	  },
+
+	  /**
+	   * Adds a component by ref to an owner component.
+	   *
+	   * @param {ReactComponent} component Component to reference.
+	   * @param {string} ref Name by which to refer to the component.
+	   * @param {ReactOwner} owner Component on which to record the ref.
+	   * @final
+	   * @internal
+	   */
+	  addComponentAsRefTo: function(component, ref, owner) {
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      ReactOwner.isValidOwner(owner),
+	      'addComponentAsRefTo(...): Only a ReactOwner can have refs. This ' +
+	      'usually means that you\'re trying to add a ref to a component that ' +
+	      'doesn\'t have an owner (that is, was not created inside of another ' +
+	      'component\'s `render` method). Try rendering this component inside of ' +
+	      'a new top-level component which will hold the ref.'
+	    ) : invariant(ReactOwner.isValidOwner(owner)));
+	    owner.attachRef(ref, component);
+	  },
+
+	  /**
+	   * Removes a component by ref from an owner component.
+	   *
+	   * @param {ReactComponent} component Component to dereference.
+	   * @param {string} ref Name of the ref to remove.
+	   * @param {ReactOwner} owner Component on which the ref is recorded.
+	   * @final
+	   * @internal
+	   */
+	  removeComponentAsRefFrom: function(component, ref, owner) {
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      ReactOwner.isValidOwner(owner),
+	      'removeComponentAsRefFrom(...): Only a ReactOwner can have refs. This ' +
+	      'usually means that you\'re trying to remove a ref to a component that ' +
+	      'doesn\'t have an owner (that is, was not created inside of another ' +
+	      'component\'s `render` method). Try rendering this component inside of ' +
+	      'a new top-level component which will hold the ref.'
+	    ) : invariant(ReactOwner.isValidOwner(owner)));
+	    // Check that `component` is still the current ref because we do not want to
+	    // detach the ref if another component stole it.
+	    if (owner.refs[ref] === component) {
+	      owner.detachRef(ref);
+	    }
+	  },
+
+	  /**
+	   * A ReactComponent must mix this in to have refs.
+	   *
+	   * @lends {ReactOwner.prototype}
+	   */
+	  Mixin: {
+
+	    construct: function() {
+	      this.refs = emptyObject;
+	    },
+
+	    /**
+	     * Lazily allocates the refs object and stores `component` as `ref`.
+	     *
+	     * @param {string} ref Reference name.
+	     * @param {component} component Component to store as `ref`.
+	     * @final
+	     * @private
+	     */
+	    attachRef: function(ref, component) {
+	      ("production" !== process.env.NODE_ENV ? invariant(
+	        component.isOwnedBy(this),
+	        'attachRef(%s, ...): Only a component\'s owner can store a ref to it.',
+	        ref
+	      ) : invariant(component.isOwnedBy(this)));
+	      var refs = this.refs === emptyObject ? (this.refs = {}) : this.refs;
+	      refs[ref] = component;
+	    },
+
+	    /**
+	     * Detaches a reference name.
+	     *
+	     * @param {string} ref Name to dereference.
+	     * @final
+	     * @private
+	     */
+	    detachRef: function(ref) {
+	      delete this.refs[ref];
+	    }
+
+	  }
+
+	};
+
+	module.exports = ReactOwner;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 50 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule ReactUpdates
+	 */
+
+	"use strict";
+
+	var CallbackQueue = __webpack_require__(110);
+	var PooledClass = __webpack_require__(53);
+	var ReactCurrentOwner = __webpack_require__(27);
+	var ReactPerf = __webpack_require__(35);
+	var Transaction = __webpack_require__(111);
+
+	var invariant = __webpack_require__(48);
+	var mixInto = __webpack_require__(63);
+	var warning = __webpack_require__(40);
+
+	var dirtyComponents = [];
+
+	var batchingStrategy = null;
+
+	function ensureInjected() {
+	  ("production" !== process.env.NODE_ENV ? invariant(
+	    ReactUpdates.ReactReconcileTransaction && batchingStrategy,
+	    'ReactUpdates: must inject a reconcile transaction class and batching ' +
+	    'strategy'
+	  ) : invariant(ReactUpdates.ReactReconcileTransaction && batchingStrategy));
+	}
+
+	var NESTED_UPDATES = {
+	  initialize: function() {
+	    this.dirtyComponentsLength = dirtyComponents.length;
+	  },
+	  close: function() {
+	    if (this.dirtyComponentsLength !== dirtyComponents.length) {
+	      // Additional updates were enqueued by componentDidUpdate handlers or
+	      // similar; before our own UPDATE_QUEUEING wrapper closes, we want to run
+	      // these new updates so that if A's componentDidUpdate calls setState on
+	      // B, B will update before the callback A's updater provided when calling
+	      // setState.
+	      dirtyComponents.splice(0, this.dirtyComponentsLength);
+	      flushBatchedUpdates();
+	    } else {
+	      dirtyComponents.length = 0;
+	    }
+	  }
+	};
+
+	var UPDATE_QUEUEING = {
+	  initialize: function() {
+	    this.callbackQueue.reset();
+	  },
+	  close: function() {
+	    this.callbackQueue.notifyAll();
+	  }
+	};
+
+	var TRANSACTION_WRAPPERS = [NESTED_UPDATES, UPDATE_QUEUEING];
+
+	function ReactUpdatesFlushTransaction() {
+	  this.reinitializeTransaction();
+	  this.dirtyComponentsLength = null;
+	  this.callbackQueue = CallbackQueue.getPooled(null);
+	  this.reconcileTransaction =
+	    ReactUpdates.ReactReconcileTransaction.getPooled();
+	}
+
+	mixInto(ReactUpdatesFlushTransaction, Transaction.Mixin);
+	mixInto(ReactUpdatesFlushTransaction, {
+	  getTransactionWrappers: function() {
+	    return TRANSACTION_WRAPPERS;
+	  },
+
+	  destructor: function() {
+	    this.dirtyComponentsLength = null;
+	    CallbackQueue.release(this.callbackQueue);
+	    this.callbackQueue = null;
+	    ReactUpdates.ReactReconcileTransaction.release(this.reconcileTransaction);
+	    this.reconcileTransaction = null;
+	  },
+
+	  perform: function(method, scope, a) {
+	    // Essentially calls `this.reconcileTransaction.perform(method, scope, a)`
+	    // with this transaction's wrappers around it.
+	    return Transaction.Mixin.perform.call(
+	      this,
+	      this.reconcileTransaction.perform,
+	      this.reconcileTransaction,
+	      method,
+	      scope,
+	      a
+	    );
+	  }
+	});
+
+	PooledClass.addPoolingTo(ReactUpdatesFlushTransaction);
+
+	function batchedUpdates(callback, a, b) {
+	  ensureInjected();
+	  batchingStrategy.batchedUpdates(callback, a, b);
+	}
+
+	/**
+	 * Array comparator for ReactComponents by owner depth
+	 *
+	 * @param {ReactComponent} c1 first component you're comparing
+	 * @param {ReactComponent} c2 second component you're comparing
+	 * @return {number} Return value usable by Array.prototype.sort().
+	 */
+	function mountDepthComparator(c1, c2) {
+	  return c1._mountDepth - c2._mountDepth;
+	}
+
+	function runBatchedUpdates(transaction) {
+	  var len = transaction.dirtyComponentsLength;
+	  ("production" !== process.env.NODE_ENV ? invariant(
+	    len === dirtyComponents.length,
+	    'Expected flush transaction\'s stored dirty-components length (%s) to ' +
+	    'match dirty-components array length (%s).',
+	    len,
+	    dirtyComponents.length
+	  ) : invariant(len === dirtyComponents.length));
+
+	  // Since reconciling a component higher in the owner hierarchy usually (not
+	  // always -- see shouldComponentUpdate()) will reconcile children, reconcile
+	  // them before their children by sorting the array.
+	  dirtyComponents.sort(mountDepthComparator);
+
+	  for (var i = 0; i < len; i++) {
+	    // If a component is unmounted before pending changes apply, ignore them
+	    // TODO: Queue unmounts in the same list to avoid this happening at all
+	    var component = dirtyComponents[i];
+	    if (component.isMounted()) {
+	      // If performUpdateIfNecessary happens to enqueue any new updates, we
+	      // shouldn't execute the callbacks until the next render happens, so
+	      // stash the callbacks first
+	      var callbacks = component._pendingCallbacks;
+	      component._pendingCallbacks = null;
+	      component.performUpdateIfNecessary(transaction.reconcileTransaction);
+
+	      if (callbacks) {
+	        for (var j = 0; j < callbacks.length; j++) {
+	          transaction.callbackQueue.enqueue(
+	            callbacks[j],
+	            component
+	          );
+	        }
+	      }
+	    }
+	  }
+	}
+
+	var flushBatchedUpdates = ReactPerf.measure(
+	  'ReactUpdates',
+	  'flushBatchedUpdates',
+	  function() {
+	    // ReactUpdatesFlushTransaction's wrappers will clear the dirtyComponents
+	    // array and perform any updates enqueued by mount-ready handlers (i.e.,
+	    // componentDidUpdate) but we need to check here too in order to catch
+	    // updates enqueued by setState callbacks.
+	    while (dirtyComponents.length) {
+	      var transaction = ReactUpdatesFlushTransaction.getPooled();
+	      transaction.perform(runBatchedUpdates, null, transaction);
+	      ReactUpdatesFlushTransaction.release(transaction);
+	    }
+	  }
+	);
+
+	/**
+	 * Mark a component as needing a rerender, adding an optional callback to a
+	 * list of functions which will be executed once the rerender occurs.
+	 */
+	function enqueueUpdate(component, callback) {
+	  ("production" !== process.env.NODE_ENV ? invariant(
+	    !callback || typeof callback === "function",
+	    'enqueueUpdate(...): You called `setProps`, `replaceProps`, ' +
+	    '`setState`, `replaceState`, or `forceUpdate` with a callback that ' +
+	    'isn\'t callable.'
+	  ) : invariant(!callback || typeof callback === "function"));
+	  ensureInjected();
+
+	  // Various parts of our code (such as ReactCompositeComponent's
+	  // _renderValidatedComponent) assume that calls to render aren't nested;
+	  // verify that that's the case. (This is called by each top-level update
+	  // function, like setProps, setState, forceUpdate, etc.; creation and
+	  // destruction of top-level components is guarded in ReactMount.)
+	  ("production" !== process.env.NODE_ENV ? warning(
+	    ReactCurrentOwner.current == null,
+	    'enqueueUpdate(): Render methods should be a pure function of props ' +
+	    'and state; triggering nested component updates from render is not ' +
+	    'allowed. If necessary, trigger nested updates in ' +
+	    'componentDidUpdate.'
+	  ) : null);
+
+	  if (!batchingStrategy.isBatchingUpdates) {
+	    batchingStrategy.batchedUpdates(enqueueUpdate, component, callback);
+	    return;
+	  }
+
+	  dirtyComponents.push(component);
+
+	  if (callback) {
+	    if (component._pendingCallbacks) {
+	      component._pendingCallbacks.push(callback);
+	    } else {
+	      component._pendingCallbacks = [callback];
+	    }
+	  }
+	}
+
+	var ReactUpdatesInjection = {
+	  injectReconcileTransaction: function(ReconcileTransaction) {
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      ReconcileTransaction,
+	      'ReactUpdates: must provide a reconcile transaction class'
+	    ) : invariant(ReconcileTransaction));
+	    ReactUpdates.ReactReconcileTransaction = ReconcileTransaction;
+	  },
+
+	  injectBatchingStrategy: function(_batchingStrategy) {
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      _batchingStrategy,
+	      'ReactUpdates: must provide a batching strategy'
+	    ) : invariant(_batchingStrategy));
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      typeof _batchingStrategy.batchedUpdates === 'function',
+	      'ReactUpdates: must provide a batchedUpdates() function'
+	    ) : invariant(typeof _batchingStrategy.batchedUpdates === 'function'));
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      typeof _batchingStrategy.isBatchingUpdates === 'boolean',
+	      'ReactUpdates: must provide an isBatchingUpdates boolean attribute'
+	    ) : invariant(typeof _batchingStrategy.isBatchingUpdates === 'boolean'));
+	    batchingStrategy = _batchingStrategy;
+	  }
+	};
+
+	var ReactUpdates = {
+	  /**
+	   * React references `ReactReconcileTransaction` using this property in order
+	   * to allow dependency injection.
+	   *
+	   * @internal
+	   */
+	  ReactReconcileTransaction: null,
+
+	  batchedUpdates: batchedUpdates,
+	  enqueueUpdate: enqueueUpdate,
+	  flushBatchedUpdates: flushBatchedUpdates,
+	  injection: ReactUpdatesInjection
+	};
+
+	module.exports = ReactUpdates;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 51 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule keyMirror
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var invariant = __webpack_require__(48);
+
+	/**
+	 * Constructs an enumeration with keys equal to their value.
+	 *
+	 * For example:
+	 *
+	 *   var COLORS = keyMirror({blue: null, red: null});
+	 *   var myColor = COLORS.blue;
+	 *   var isColorValid = !!COLORS[myColor];
+	 *
+	 * The last line could not be performed if the values of the generated enum were
+	 * not equal to their keys.
+	 *
+	 *   Input:  {key1: val1, key2: val2}
+	 *   Output: {key1: key1, key2: key2}
+	 *
+	 * @param {object} obj
+	 * @return {object}
+	 */
+	var keyMirror = function(obj) {
+	  var ret = {};
+	  var key;
+	  ("production" !== process.env.NODE_ENV ? invariant(
+	    obj instanceof Object && !Array.isArray(obj),
+	    'keyMirror(...): Argument must be an object.'
+	  ) : invariant(obj instanceof Object && !Array.isArray(obj)));
+	  for (key in obj) {
+	    if (!obj.hasOwnProperty(key)) {
+	      continue;
+	    }
+	    ret[key] = key;
+	  }
+	  return ret;
+	};
+
+	module.exports = keyMirror;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 52 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule merge
+	 */
+
+	"use strict";
+
+	var mergeInto = __webpack_require__(67);
+
+	/**
+	 * Shallow merges two structures into a return value, without mutating either.
+	 *
+	 * @param {?object} one Optional object with properties to merge from.
+	 * @param {?object} two Optional object with properties to merge from.
+	 * @return {object} The shallow extension of one by two.
+	 */
+	var merge = function(one, two) {
+	  var result = {};
+	  mergeInto(result, one);
+	  mergeInto(result, two);
+	  return result;
+	};
+
+	module.exports = merge;
+
+
+/***/ },
+/* 53 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule PooledClass
+	 */
+
+	"use strict";
+
+	var invariant = __webpack_require__(48);
+
+	/**
+	 * Static poolers. Several custom versions for each potential number of
+	 * arguments. A completely generic pooler is easy to implement, but would
+	 * require accessing the `arguments` object. In each of these, `this` refers to
+	 * the Class itself, not an instance. If any others are needed, simply add them
+	 * here, or in their own files.
+	 */
+	var oneArgumentPooler = function(copyFieldsFrom) {
+	  var Klass = this;
+	  if (Klass.instancePool.length) {
+	    var instance = Klass.instancePool.pop();
+	    Klass.call(instance, copyFieldsFrom);
+	    return instance;
+	  } else {
+	    return new Klass(copyFieldsFrom);
+	  }
+	};
+
+	var twoArgumentPooler = function(a1, a2) {
+	  var Klass = this;
+	  if (Klass.instancePool.length) {
+	    var instance = Klass.instancePool.pop();
+	    Klass.call(instance, a1, a2);
+	    return instance;
+	  } else {
+	    return new Klass(a1, a2);
+	  }
+	};
+
+	var threeArgumentPooler = function(a1, a2, a3) {
+	  var Klass = this;
+	  if (Klass.instancePool.length) {
+	    var instance = Klass.instancePool.pop();
+	    Klass.call(instance, a1, a2, a3);
+	    return instance;
+	  } else {
+	    return new Klass(a1, a2, a3);
+	  }
+	};
+
+	var fiveArgumentPooler = function(a1, a2, a3, a4, a5) {
+	  var Klass = this;
+	  if (Klass.instancePool.length) {
+	    var instance = Klass.instancePool.pop();
+	    Klass.call(instance, a1, a2, a3, a4, a5);
+	    return instance;
+	  } else {
+	    return new Klass(a1, a2, a3, a4, a5);
+	  }
+	};
+
+	var standardReleaser = function(instance) {
+	  var Klass = this;
+	  ("production" !== process.env.NODE_ENV ? invariant(
+	    instance instanceof Klass,
+	    'Trying to release an instance into a pool of a different type.'
+	  ) : invariant(instance instanceof Klass));
+	  if (instance.destructor) {
+	    instance.destructor();
+	  }
+	  if (Klass.instancePool.length < Klass.poolSize) {
+	    Klass.instancePool.push(instance);
+	  }
+	};
+
+	var DEFAULT_POOL_SIZE = 10;
+	var DEFAULT_POOLER = oneArgumentPooler;
+
+	/**
+	 * Augments `CopyConstructor` to be a poolable class, augmenting only the class
+	 * itself (statically) not adding any prototypical fields. Any CopyConstructor
+	 * you give this may have a `poolSize` property, and will look for a
+	 * prototypical `destructor` on instances (optional).
+	 *
+	 * @param {Function} CopyConstructor Constructor that can be used to reset.
+	 * @param {Function} pooler Customizable pooler.
+	 */
+	var addPoolingTo = function(CopyConstructor, pooler) {
+	  var NewKlass = CopyConstructor;
+	  NewKlass.instancePool = [];
+	  NewKlass.getPooled = pooler || DEFAULT_POOLER;
+	  if (!NewKlass.poolSize) {
+	    NewKlass.poolSize = DEFAULT_POOL_SIZE;
+	  }
+	  NewKlass.release = standardReleaser;
+	  return NewKlass;
+	};
+
+	var PooledClass = {
+	  addPoolingTo: addPoolingTo,
+	  oneArgumentPooler: oneArgumentPooler,
+	  twoArgumentPooler: twoArgumentPooler,
+	  threeArgumentPooler: threeArgumentPooler,
+	  fiveArgumentPooler: fiveArgumentPooler
+	};
+
+	module.exports = PooledClass;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 54 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule traverseAllChildren
+	 */
+
+	"use strict";
+
+	var ReactInstanceHandles = __webpack_require__(32);
+	var ReactTextComponent = __webpack_require__(38);
+
+	var invariant = __webpack_require__(48);
+
+	var SEPARATOR = ReactInstanceHandles.SEPARATOR;
+	var SUBSEPARATOR = ':';
+
+	/**
+	 * TODO: Test that:
+	 * 1. `mapChildren` transforms strings and numbers into `ReactTextComponent`.
+	 * 2. it('should fail when supplied duplicate key', function() {
+	 * 3. That a single child and an array with one item have the same key pattern.
+	 * });
+	 */
+
+	var userProvidedKeyEscaperLookup = {
+	  '=': '=0',
+	  '.': '=1',
+	  ':': '=2'
+	};
+
+	var userProvidedKeyEscapeRegex = /[=.:]/g;
+
+	function userProvidedKeyEscaper(match) {
+	  return userProvidedKeyEscaperLookup[match];
+	}
+
+	/**
+	 * Generate a key string that identifies a component within a set.
+	 *
+	 * @param {*} component A component that could contain a manual key.
+	 * @param {number} index Index that is used if a manual key is not provided.
+	 * @return {string}
+	 */
+	function getComponentKey(component, index) {
+	  if (component && component.props && component.props.key != null) {
+	    // Explicit key
+	    return wrapUserProvidedKey(component.props.key);
+	  }
+	  // Implicit key determined by the index in the set
+	  return index.toString(36);
+	}
+
+	/**
+	 * Escape a component key so that it is safe to use in a reactid.
+	 *
+	 * @param {*} key Component key to be escaped.
+	 * @return {string} An escaped string.
+	 */
+	function escapeUserProvidedKey(text) {
+	  return ('' + text).replace(
+	    userProvidedKeyEscapeRegex,
+	    userProvidedKeyEscaper
+	  );
+	}
+
+	/**
+	 * Wrap a `key` value explicitly provided by the user to distinguish it from
+	 * implicitly-generated keys generated by a component's index in its parent.
+	 *
+	 * @param {string} key Value of a user-provided `key` attribute
+	 * @return {string}
+	 */
+	function wrapUserProvidedKey(key) {
+	  return '$' + escapeUserProvidedKey(key);
+	}
+
+	/**
+	 * @param {?*} children Children tree container.
+	 * @param {!string} nameSoFar Name of the key path so far.
+	 * @param {!number} indexSoFar Number of children encountered until this point.
+	 * @param {!function} callback Callback to invoke with each child found.
+	 * @param {?*} traverseContext Used to pass information throughout the traversal
+	 * process.
+	 * @return {!number} The number of children in this subtree.
+	 */
+	var traverseAllChildrenImpl =
+	  function(children, nameSoFar, indexSoFar, callback, traverseContext) {
+	    var subtreeCount = 0;  // Count of children found in the current subtree.
+	    if (Array.isArray(children)) {
+	      for (var i = 0; i < children.length; i++) {
+	        var child = children[i];
+	        var nextName = (
+	          nameSoFar +
+	          (nameSoFar ? SUBSEPARATOR : SEPARATOR) +
+	          getComponentKey(child, i)
+	        );
+	        var nextIndex = indexSoFar + subtreeCount;
+	        subtreeCount += traverseAllChildrenImpl(
+	          child,
+	          nextName,
+	          nextIndex,
+	          callback,
+	          traverseContext
+	        );
+	      }
+	    } else {
+	      var type = typeof children;
+	      var isOnlyChild = nameSoFar === '';
+	      // If it's the only child, treat the name as if it was wrapped in an array
+	      // so that it's consistent if the number of children grows
+	      var storageName =
+	        isOnlyChild ? SEPARATOR + getComponentKey(children, 0) : nameSoFar;
+	      if (children == null || type === 'boolean') {
+	        // All of the above are perceived as null.
+	        callback(traverseContext, null, storageName, indexSoFar);
+	        subtreeCount = 1;
+	      } else if (children.type && children.type.prototype &&
+	                 children.type.prototype.mountComponentIntoNode) {
+	        callback(traverseContext, children, storageName, indexSoFar);
+	        subtreeCount = 1;
+	      } else {
+	        if (type === 'object') {
+	          ("production" !== process.env.NODE_ENV ? invariant(
+	            !children || children.nodeType !== 1,
+	            'traverseAllChildren(...): Encountered an invalid child; DOM ' +
+	            'elements are not valid children of React components.'
+	          ) : invariant(!children || children.nodeType !== 1));
+	          for (var key in children) {
+	            if (children.hasOwnProperty(key)) {
+	              subtreeCount += traverseAllChildrenImpl(
+	                children[key],
+	                (
+	                  nameSoFar + (nameSoFar ? SUBSEPARATOR : SEPARATOR) +
+	                  wrapUserProvidedKey(key) + SUBSEPARATOR +
+	                  getComponentKey(children[key], 0)
+	                ),
+	                indexSoFar + subtreeCount,
+	                callback,
+	                traverseContext
+	              );
+	            }
+	          }
+	        } else if (type === 'string') {
+	          var normalizedText = ReactTextComponent(children);
+	          callback(traverseContext, normalizedText, storageName, indexSoFar);
+	          subtreeCount += 1;
+	        } else if (type === 'number') {
+	          var normalizedNumber = ReactTextComponent('' + children);
+	          callback(traverseContext, normalizedNumber, storageName, indexSoFar);
+	          subtreeCount += 1;
+	        }
+	      }
+	    }
+	    return subtreeCount;
+	  };
+
+	/**
+	 * Traverses children that are typically specified as `props.children`, but
+	 * might also be specified through attributes:
+	 *
+	 * - `traverseAllChildren(this.props.children, ...)`
+	 * - `traverseAllChildren(this.props.leftPanelChildren, ...)`
+	 *
+	 * The `traverseContext` is an optional argument that is passed through the
+	 * entire traversal. It can be used to store accumulations or anything else that
+	 * the callback might find relevant.
+	 *
+	 * @param {?*} children Children tree object.
+	 * @param {!function} callback To invoke upon traversing each child.
+	 * @param {?*} traverseContext Context for traversal.
+	 * @return {!number} The number of children in this subtree.
+	 */
+	function traverseAllChildren(children, callback, traverseContext) {
+	  if (children == null) {
+	    return 0;
+	  }
+
+	  return traverseAllChildrenImpl(children, '', 0, callback, traverseContext);
+	}
+
+	module.exports = traverseAllChildren;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
 /* 55 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	/**
+	 * This is the web browser implementation of `debug()`.
+	 *
+	 * Expose `debug()` as the module.
+	 */
+
+	exports = module.exports = __webpack_require__(154);
+	exports.log = log;
+	exports.formatArgs = formatArgs;
+	exports.save = save;
+	exports.load = load;
+	exports.useColors = useColors;
+
+	/**
+	 * Colors.
+	 */
+
+	exports.colors = [
+	  'lightseagreen',
+	  'forestgreen',
+	  'goldenrod',
+	  'dodgerblue',
+	  'darkorchid',
+	  'crimson'
+	];
+
+	/**
+	 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+	 * and the Firebug extension (any Firefox version) are known
+	 * to support "%c" CSS customizations.
+	 *
+	 * TODO: add a `localStorage` variable to explicitly enable/disable colors
+	 */
+
+	function useColors() {
+	  // is webkit? http://stackoverflow.com/a/16459606/376773
+	  return ('WebkitAppearance' in document.documentElement.style) ||
+	    // is firebug? http://stackoverflow.com/a/398120/376773
+	    (window.console && (console.firebug || (console.exception && console.table))) ||
+	    // is firefox >= v31?
+	    // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+	    (navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31);
+	}
+
+	/**
+	 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+	 */
+
+	exports.formatters.j = function(v) {
+	  return JSON.stringify(v);
+	};
+
+
+	/**
+	 * Colorize log arguments if enabled.
+	 *
+	 * @api public
+	 */
+
+	function formatArgs() {
+	  var args = arguments;
+	  var useColors = this.useColors;
+
+	  args[0] = (useColors ? '%c' : '')
+	    + this.namespace
+	    + (useColors ? ' %c' : ' ')
+	    + args[0]
+	    + (useColors ? '%c ' : ' ')
+	    + '+' + exports.humanize(this.diff);
+
+	  if (!useColors) return args;
+
+	  var c = 'color: ' + this.color;
+	  args = [args[0], c, 'color: inherit'].concat(Array.prototype.slice.call(args, 1));
+
+	  // the final "%c" is somewhat tricky, because there could be other
+	  // arguments passed either before or after the %c, so we need to
+	  // figure out the correct index to insert the CSS into
+	  var index = 0;
+	  var lastC = 0;
+	  args[0].replace(/%[a-z%]/g, function(match) {
+	    if ('%%' === match) return;
+	    index++;
+	    if ('%c' === match) {
+	      // we only are interested in the *last* %c
+	      // (the user may have provided their own)
+	      lastC = index;
+	    }
+	  });
+
+	  args.splice(lastC, 0, c);
+	  return args;
+	}
+
+	/**
+	 * Invokes `console.log()` when available.
+	 * No-op when `console.log` is not a "function".
+	 *
+	 * @api public
+	 */
+
+	function log() {
+	  // This hackery is required for IE8,
+	  // where the `console.log` function doesn't have 'apply'
+	  return 'object' == typeof console
+	    && 'function' == typeof console.log
+	    && Function.prototype.apply.call(console.log, console, arguments);
+	}
+
+	/**
+	 * Save `namespaces`.
+	 *
+	 * @param {String} namespaces
+	 * @api private
+	 */
+
+	function save(namespaces) {
+	  try {
+	    if (null == namespaces) {
+	      localStorage.removeItem('debug');
+	    } else {
+	      localStorage.debug = namespaces;
+	    }
+	  } catch(e) {}
+	}
+
+	/**
+	 * Load `namespaces`.
+	 *
+	 * @return {String} returns the previously persisted debug modes
+	 * @api private
+	 */
+
+	function load() {
+	  var r;
+	  try {
+	    r = localStorage.debug;
+	  } catch(e) {}
+	  return r;
+	}
+
+	/**
+	 * Enable namespaces listed in `localStorage.debug` initially.
+	 */
+
+	exports.enable(load());
+
+
+/***/ },
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -8083,11 +8570,11 @@
 
 	"use strict";
 
-	var ReactDescriptor = __webpack_require__(29);
+	var ReactDescriptor = __webpack_require__(28);
 	var ReactPropTypeLocations = __webpack_require__(60);
-	var ReactCurrentOwner = __webpack_require__(28);
+	var ReactCurrentOwner = __webpack_require__(27);
 
-	var monitorCodeUse = __webpack_require__(66);
+	var monitorCodeUse = __webpack_require__(64);
 
 	/**
 	 * Warn if there's no key explicitly set on dynamic arrays of children or
@@ -8342,7 +8829,7 @@
 
 
 /***/ },
-/* 56 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -8365,7 +8852,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	var component;
 	// This registry keeps track of the React IDs of the components that rendered to
@@ -8424,10 +8911,10 @@
 
 	module.exports = ReactEmptyComponent;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 57 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -8470,172 +8957,6 @@
 
 
 /***/ },
-/* 58 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule ReactOwner
-	 */
-
-	"use strict";
-
-	var emptyObject = __webpack_require__(115);
-	var invariant = __webpack_require__(54);
-
-	/**
-	 * ReactOwners are capable of storing references to owned components.
-	 *
-	 * All components are capable of //being// referenced by owner components, but
-	 * only ReactOwner components are capable of //referencing// owned components.
-	 * The named reference is known as a "ref".
-	 *
-	 * Refs are available when mounted and updated during reconciliation.
-	 *
-	 *   var MyComponent = React.createClass({
-	 *     render: function() {
-	 *       return (
-	 *         <div onClick={this.handleClick}>
-	 *           <CustomComponent ref="custom" />
-	 *         </div>
-	 *       );
-	 *     },
-	 *     handleClick: function() {
-	 *       this.refs.custom.handleClick();
-	 *     },
-	 *     componentDidMount: function() {
-	 *       this.refs.custom.initialize();
-	 *     }
-	 *   });
-	 *
-	 * Refs should rarely be used. When refs are used, they should only be done to
-	 * control data that is not handled by React's data flow.
-	 *
-	 * @class ReactOwner
-	 */
-	var ReactOwner = {
-
-	  /**
-	   * @param {?object} object
-	   * @return {boolean} True if `object` is a valid owner.
-	   * @final
-	   */
-	  isValidOwner: function(object) {
-	    return !!(
-	      object &&
-	      typeof object.attachRef === 'function' &&
-	      typeof object.detachRef === 'function'
-	    );
-	  },
-
-	  /**
-	   * Adds a component by ref to an owner component.
-	   *
-	   * @param {ReactComponent} component Component to reference.
-	   * @param {string} ref Name by which to refer to the component.
-	   * @param {ReactOwner} owner Component on which to record the ref.
-	   * @final
-	   * @internal
-	   */
-	  addComponentAsRefTo: function(component, ref, owner) {
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      ReactOwner.isValidOwner(owner),
-	      'addComponentAsRefTo(...): Only a ReactOwner can have refs. This ' +
-	      'usually means that you\'re trying to add a ref to a component that ' +
-	      'doesn\'t have an owner (that is, was not created inside of another ' +
-	      'component\'s `render` method). Try rendering this component inside of ' +
-	      'a new top-level component which will hold the ref.'
-	    ) : invariant(ReactOwner.isValidOwner(owner)));
-	    owner.attachRef(ref, component);
-	  },
-
-	  /**
-	   * Removes a component by ref from an owner component.
-	   *
-	   * @param {ReactComponent} component Component to dereference.
-	   * @param {string} ref Name of the ref to remove.
-	   * @param {ReactOwner} owner Component on which the ref is recorded.
-	   * @final
-	   * @internal
-	   */
-	  removeComponentAsRefFrom: function(component, ref, owner) {
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      ReactOwner.isValidOwner(owner),
-	      'removeComponentAsRefFrom(...): Only a ReactOwner can have refs. This ' +
-	      'usually means that you\'re trying to remove a ref to a component that ' +
-	      'doesn\'t have an owner (that is, was not created inside of another ' +
-	      'component\'s `render` method). Try rendering this component inside of ' +
-	      'a new top-level component which will hold the ref.'
-	    ) : invariant(ReactOwner.isValidOwner(owner)));
-	    // Check that `component` is still the current ref because we do not want to
-	    // detach the ref if another component stole it.
-	    if (owner.refs[ref] === component) {
-	      owner.detachRef(ref);
-	    }
-	  },
-
-	  /**
-	   * A ReactComponent must mix this in to have refs.
-	   *
-	   * @lends {ReactOwner.prototype}
-	   */
-	  Mixin: {
-
-	    construct: function() {
-	      this.refs = emptyObject;
-	    },
-
-	    /**
-	     * Lazily allocates the refs object and stores `component` as `ref`.
-	     *
-	     * @param {string} ref Reference name.
-	     * @param {component} component Component to store as `ref`.
-	     * @final
-	     * @private
-	     */
-	    attachRef: function(ref, component) {
-	      ("production" !== process.env.NODE_ENV ? invariant(
-	        component.isOwnedBy(this),
-	        'attachRef(%s, ...): Only a component\'s owner can store a ref to it.',
-	        ref
-	      ) : invariant(component.isOwnedBy(this)));
-	      var refs = this.refs === emptyObject ? (this.refs = {}) : this.refs;
-	      refs[ref] = component;
-	    },
-
-	    /**
-	     * Detaches a reference name.
-	     *
-	     * @param {string} ref Name to dereference.
-	     * @final
-	     * @private
-	     */
-	    detachRef: function(ref) {
-	      delete this.refs[ref];
-	    }
-
-	  }
-
-	};
-
-	module.exports = ReactOwner;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
 /* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -8660,8 +8981,8 @@
 	"use strict";
 
 	var emptyFunction = __webpack_require__(104);
-	var invariant = __webpack_require__(54);
-	var joinClasses = __webpack_require__(116);
+	var invariant = __webpack_require__(48);
+	var joinClasses = __webpack_require__(112);
 	var merge = __webpack_require__(52);
 
 	/**
@@ -8802,7 +9123,7 @@
 
 	module.exports = ReactPropTransferer;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
 /* 60 */
@@ -8828,7 +9149,7 @@
 
 	"use strict";
 
-	var keyMirror = __webpack_require__(64);
+	var keyMirror = __webpack_require__(51);
 
 	var ReactPropTypeLocations = keyMirror({
 	  prop: null,
@@ -8875,282 +9196,10 @@
 
 	module.exports = ReactPropTypeLocationNames;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
 /* 62 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule ReactUpdates
-	 */
-
-	"use strict";
-
-	var CallbackQueue = __webpack_require__(117);
-	var PooledClass = __webpack_require__(69);
-	var ReactCurrentOwner = __webpack_require__(28);
-	var ReactPerf = __webpack_require__(36);
-	var Transaction = __webpack_require__(118);
-
-	var invariant = __webpack_require__(54);
-	var mixInto = __webpack_require__(65);
-	var warning = __webpack_require__(41);
-
-	var dirtyComponents = [];
-
-	var batchingStrategy = null;
-
-	function ensureInjected() {
-	  ("production" !== process.env.NODE_ENV ? invariant(
-	    ReactUpdates.ReactReconcileTransaction && batchingStrategy,
-	    'ReactUpdates: must inject a reconcile transaction class and batching ' +
-	    'strategy'
-	  ) : invariant(ReactUpdates.ReactReconcileTransaction && batchingStrategy));
-	}
-
-	var NESTED_UPDATES = {
-	  initialize: function() {
-	    this.dirtyComponentsLength = dirtyComponents.length;
-	  },
-	  close: function() {
-	    if (this.dirtyComponentsLength !== dirtyComponents.length) {
-	      // Additional updates were enqueued by componentDidUpdate handlers or
-	      // similar; before our own UPDATE_QUEUEING wrapper closes, we want to run
-	      // these new updates so that if A's componentDidUpdate calls setState on
-	      // B, B will update before the callback A's updater provided when calling
-	      // setState.
-	      dirtyComponents.splice(0, this.dirtyComponentsLength);
-	      flushBatchedUpdates();
-	    } else {
-	      dirtyComponents.length = 0;
-	    }
-	  }
-	};
-
-	var UPDATE_QUEUEING = {
-	  initialize: function() {
-	    this.callbackQueue.reset();
-	  },
-	  close: function() {
-	    this.callbackQueue.notifyAll();
-	  }
-	};
-
-	var TRANSACTION_WRAPPERS = [NESTED_UPDATES, UPDATE_QUEUEING];
-
-	function ReactUpdatesFlushTransaction() {
-	  this.reinitializeTransaction();
-	  this.dirtyComponentsLength = null;
-	  this.callbackQueue = CallbackQueue.getPooled(null);
-	  this.reconcileTransaction =
-	    ReactUpdates.ReactReconcileTransaction.getPooled();
-	}
-
-	mixInto(ReactUpdatesFlushTransaction, Transaction.Mixin);
-	mixInto(ReactUpdatesFlushTransaction, {
-	  getTransactionWrappers: function() {
-	    return TRANSACTION_WRAPPERS;
-	  },
-
-	  destructor: function() {
-	    this.dirtyComponentsLength = null;
-	    CallbackQueue.release(this.callbackQueue);
-	    this.callbackQueue = null;
-	    ReactUpdates.ReactReconcileTransaction.release(this.reconcileTransaction);
-	    this.reconcileTransaction = null;
-	  },
-
-	  perform: function(method, scope, a) {
-	    // Essentially calls `this.reconcileTransaction.perform(method, scope, a)`
-	    // with this transaction's wrappers around it.
-	    return Transaction.Mixin.perform.call(
-	      this,
-	      this.reconcileTransaction.perform,
-	      this.reconcileTransaction,
-	      method,
-	      scope,
-	      a
-	    );
-	  }
-	});
-
-	PooledClass.addPoolingTo(ReactUpdatesFlushTransaction);
-
-	function batchedUpdates(callback, a, b) {
-	  ensureInjected();
-	  batchingStrategy.batchedUpdates(callback, a, b);
-	}
-
-	/**
-	 * Array comparator for ReactComponents by owner depth
-	 *
-	 * @param {ReactComponent} c1 first component you're comparing
-	 * @param {ReactComponent} c2 second component you're comparing
-	 * @return {number} Return value usable by Array.prototype.sort().
-	 */
-	function mountDepthComparator(c1, c2) {
-	  return c1._mountDepth - c2._mountDepth;
-	}
-
-	function runBatchedUpdates(transaction) {
-	  var len = transaction.dirtyComponentsLength;
-	  ("production" !== process.env.NODE_ENV ? invariant(
-	    len === dirtyComponents.length,
-	    'Expected flush transaction\'s stored dirty-components length (%s) to ' +
-	    'match dirty-components array length (%s).',
-	    len,
-	    dirtyComponents.length
-	  ) : invariant(len === dirtyComponents.length));
-
-	  // Since reconciling a component higher in the owner hierarchy usually (not
-	  // always -- see shouldComponentUpdate()) will reconcile children, reconcile
-	  // them before their children by sorting the array.
-	  dirtyComponents.sort(mountDepthComparator);
-
-	  for (var i = 0; i < len; i++) {
-	    // If a component is unmounted before pending changes apply, ignore them
-	    // TODO: Queue unmounts in the same list to avoid this happening at all
-	    var component = dirtyComponents[i];
-	    if (component.isMounted()) {
-	      // If performUpdateIfNecessary happens to enqueue any new updates, we
-	      // shouldn't execute the callbacks until the next render happens, so
-	      // stash the callbacks first
-	      var callbacks = component._pendingCallbacks;
-	      component._pendingCallbacks = null;
-	      component.performUpdateIfNecessary(transaction.reconcileTransaction);
-
-	      if (callbacks) {
-	        for (var j = 0; j < callbacks.length; j++) {
-	          transaction.callbackQueue.enqueue(
-	            callbacks[j],
-	            component
-	          );
-	        }
-	      }
-	    }
-	  }
-	}
-
-	var flushBatchedUpdates = ReactPerf.measure(
-	  'ReactUpdates',
-	  'flushBatchedUpdates',
-	  function() {
-	    // ReactUpdatesFlushTransaction's wrappers will clear the dirtyComponents
-	    // array and perform any updates enqueued by mount-ready handlers (i.e.,
-	    // componentDidUpdate) but we need to check here too in order to catch
-	    // updates enqueued by setState callbacks.
-	    while (dirtyComponents.length) {
-	      var transaction = ReactUpdatesFlushTransaction.getPooled();
-	      transaction.perform(runBatchedUpdates, null, transaction);
-	      ReactUpdatesFlushTransaction.release(transaction);
-	    }
-	  }
-	);
-
-	/**
-	 * Mark a component as needing a rerender, adding an optional callback to a
-	 * list of functions which will be executed once the rerender occurs.
-	 */
-	function enqueueUpdate(component, callback) {
-	  ("production" !== process.env.NODE_ENV ? invariant(
-	    !callback || typeof callback === "function",
-	    'enqueueUpdate(...): You called `setProps`, `replaceProps`, ' +
-	    '`setState`, `replaceState`, or `forceUpdate` with a callback that ' +
-	    'isn\'t callable.'
-	  ) : invariant(!callback || typeof callback === "function"));
-	  ensureInjected();
-
-	  // Various parts of our code (such as ReactCompositeComponent's
-	  // _renderValidatedComponent) assume that calls to render aren't nested;
-	  // verify that that's the case. (This is called by each top-level update
-	  // function, like setProps, setState, forceUpdate, etc.; creation and
-	  // destruction of top-level components is guarded in ReactMount.)
-	  ("production" !== process.env.NODE_ENV ? warning(
-	    ReactCurrentOwner.current == null,
-	    'enqueueUpdate(): Render methods should be a pure function of props ' +
-	    'and state; triggering nested component updates from render is not ' +
-	    'allowed. If necessary, trigger nested updates in ' +
-	    'componentDidUpdate.'
-	  ) : null);
-
-	  if (!batchingStrategy.isBatchingUpdates) {
-	    batchingStrategy.batchedUpdates(enqueueUpdate, component, callback);
-	    return;
-	  }
-
-	  dirtyComponents.push(component);
-
-	  if (callback) {
-	    if (component._pendingCallbacks) {
-	      component._pendingCallbacks.push(callback);
-	    } else {
-	      component._pendingCallbacks = [callback];
-	    }
-	  }
-	}
-
-	var ReactUpdatesInjection = {
-	  injectReconcileTransaction: function(ReconcileTransaction) {
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      ReconcileTransaction,
-	      'ReactUpdates: must provide a reconcile transaction class'
-	    ) : invariant(ReconcileTransaction));
-	    ReactUpdates.ReactReconcileTransaction = ReconcileTransaction;
-	  },
-
-	  injectBatchingStrategy: function(_batchingStrategy) {
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      _batchingStrategy,
-	      'ReactUpdates: must provide a batching strategy'
-	    ) : invariant(_batchingStrategy));
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      typeof _batchingStrategy.batchedUpdates === 'function',
-	      'ReactUpdates: must provide a batchedUpdates() function'
-	    ) : invariant(typeof _batchingStrategy.batchedUpdates === 'function'));
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      typeof _batchingStrategy.isBatchingUpdates === 'boolean',
-	      'ReactUpdates: must provide an isBatchingUpdates boolean attribute'
-	    ) : invariant(typeof _batchingStrategy.isBatchingUpdates === 'boolean'));
-	    batchingStrategy = _batchingStrategy;
-	  }
-	};
-
-	var ReactUpdates = {
-	  /**
-	   * React references `ReactReconcileTransaction` using this property in order
-	   * to allow dependency injection.
-	   *
-	   * @internal
-	   */
-	  ReactReconcileTransaction: null,
-
-	  batchedUpdates: batchedUpdates,
-	  enqueueUpdate: enqueueUpdate,
-	  flushBatchedUpdates: flushBatchedUpdates,
-	  injection: ReactUpdatesInjection
-	};
-
-	module.exports = ReactUpdates;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
-/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -9174,7 +9223,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Validate a `componentDescriptor`. This should be exposed publicly in a follow
@@ -9216,75 +9265,10 @@
 
 	module.exports = instantiateReactComponent;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 64 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule keyMirror
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var invariant = __webpack_require__(54);
-
-	/**
-	 * Constructs an enumeration with keys equal to their value.
-	 *
-	 * For example:
-	 *
-	 *   var COLORS = keyMirror({blue: null, red: null});
-	 *   var myColor = COLORS.blue;
-	 *   var isColorValid = !!COLORS[myColor];
-	 *
-	 * The last line could not be performed if the values of the generated enum were
-	 * not equal to their keys.
-	 *
-	 *   Input:  {key1: val1, key2: val2}
-	 *   Output: {key1: key1, key2: key2}
-	 *
-	 * @param {object} obj
-	 * @return {object}
-	 */
-	var keyMirror = function(obj) {
-	  var ret = {};
-	  var key;
-	  ("production" !== process.env.NODE_ENV ? invariant(
-	    obj instanceof Object && !Array.isArray(obj),
-	    'keyMirror(...): Argument must be an object.'
-	  ) : invariant(obj instanceof Object && !Array.isArray(obj)));
-	  for (key in obj) {
-	    if (!obj.hasOwnProperty(key)) {
-	      continue;
-	    }
-	    ret[key] = key;
-	  }
-	  return ret;
-	};
-
-	module.exports = keyMirror;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
-/* 65 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -9324,7 +9308,7 @@
 
 
 /***/ },
-/* 66 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -9347,7 +9331,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Provides open-source compatible instrumentation for monitoring certain API
@@ -9365,10 +9349,10 @@
 
 	module.exports = monitorCodeUse;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 67 */
+/* 65 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -9426,7 +9410,7 @@
 
 
 /***/ },
-/* 68 */
+/* 66 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -9476,333 +9460,7 @@
 
 
 /***/ },
-/* 69 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule PooledClass
-	 */
-
-	"use strict";
-
-	var invariant = __webpack_require__(54);
-
-	/**
-	 * Static poolers. Several custom versions for each potential number of
-	 * arguments. A completely generic pooler is easy to implement, but would
-	 * require accessing the `arguments` object. In each of these, `this` refers to
-	 * the Class itself, not an instance. If any others are needed, simply add them
-	 * here, or in their own files.
-	 */
-	var oneArgumentPooler = function(copyFieldsFrom) {
-	  var Klass = this;
-	  if (Klass.instancePool.length) {
-	    var instance = Klass.instancePool.pop();
-	    Klass.call(instance, copyFieldsFrom);
-	    return instance;
-	  } else {
-	    return new Klass(copyFieldsFrom);
-	  }
-	};
-
-	var twoArgumentPooler = function(a1, a2) {
-	  var Klass = this;
-	  if (Klass.instancePool.length) {
-	    var instance = Klass.instancePool.pop();
-	    Klass.call(instance, a1, a2);
-	    return instance;
-	  } else {
-	    return new Klass(a1, a2);
-	  }
-	};
-
-	var threeArgumentPooler = function(a1, a2, a3) {
-	  var Klass = this;
-	  if (Klass.instancePool.length) {
-	    var instance = Klass.instancePool.pop();
-	    Klass.call(instance, a1, a2, a3);
-	    return instance;
-	  } else {
-	    return new Klass(a1, a2, a3);
-	  }
-	};
-
-	var fiveArgumentPooler = function(a1, a2, a3, a4, a5) {
-	  var Klass = this;
-	  if (Klass.instancePool.length) {
-	    var instance = Klass.instancePool.pop();
-	    Klass.call(instance, a1, a2, a3, a4, a5);
-	    return instance;
-	  } else {
-	    return new Klass(a1, a2, a3, a4, a5);
-	  }
-	};
-
-	var standardReleaser = function(instance) {
-	  var Klass = this;
-	  ("production" !== process.env.NODE_ENV ? invariant(
-	    instance instanceof Klass,
-	    'Trying to release an instance into a pool of a different type.'
-	  ) : invariant(instance instanceof Klass));
-	  if (instance.destructor) {
-	    instance.destructor();
-	  }
-	  if (Klass.instancePool.length < Klass.poolSize) {
-	    Klass.instancePool.push(instance);
-	  }
-	};
-
-	var DEFAULT_POOL_SIZE = 10;
-	var DEFAULT_POOLER = oneArgumentPooler;
-
-	/**
-	 * Augments `CopyConstructor` to be a poolable class, augmenting only the class
-	 * itself (statically) not adding any prototypical fields. Any CopyConstructor
-	 * you give this may have a `poolSize` property, and will look for a
-	 * prototypical `destructor` on instances (optional).
-	 *
-	 * @param {Function} CopyConstructor Constructor that can be used to reset.
-	 * @param {Function} pooler Customizable pooler.
-	 */
-	var addPoolingTo = function(CopyConstructor, pooler) {
-	  var NewKlass = CopyConstructor;
-	  NewKlass.instancePool = [];
-	  NewKlass.getPooled = pooler || DEFAULT_POOLER;
-	  if (!NewKlass.poolSize) {
-	    NewKlass.poolSize = DEFAULT_POOL_SIZE;
-	  }
-	  NewKlass.release = standardReleaser;
-	  return NewKlass;
-	};
-
-	var PooledClass = {
-	  addPoolingTo: addPoolingTo,
-	  oneArgumentPooler: oneArgumentPooler,
-	  twoArgumentPooler: twoArgumentPooler,
-	  threeArgumentPooler: threeArgumentPooler,
-	  fiveArgumentPooler: fiveArgumentPooler
-	};
-
-	module.exports = PooledClass;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
-/* 70 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule traverseAllChildren
-	 */
-
-	"use strict";
-
-	var ReactInstanceHandles = __webpack_require__(33);
-	var ReactTextComponent = __webpack_require__(39);
-
-	var invariant = __webpack_require__(54);
-
-	var SEPARATOR = ReactInstanceHandles.SEPARATOR;
-	var SUBSEPARATOR = ':';
-
-	/**
-	 * TODO: Test that:
-	 * 1. `mapChildren` transforms strings and numbers into `ReactTextComponent`.
-	 * 2. it('should fail when supplied duplicate key', function() {
-	 * 3. That a single child and an array with one item have the same key pattern.
-	 * });
-	 */
-
-	var userProvidedKeyEscaperLookup = {
-	  '=': '=0',
-	  '.': '=1',
-	  ':': '=2'
-	};
-
-	var userProvidedKeyEscapeRegex = /[=.:]/g;
-
-	function userProvidedKeyEscaper(match) {
-	  return userProvidedKeyEscaperLookup[match];
-	}
-
-	/**
-	 * Generate a key string that identifies a component within a set.
-	 *
-	 * @param {*} component A component that could contain a manual key.
-	 * @param {number} index Index that is used if a manual key is not provided.
-	 * @return {string}
-	 */
-	function getComponentKey(component, index) {
-	  if (component && component.props && component.props.key != null) {
-	    // Explicit key
-	    return wrapUserProvidedKey(component.props.key);
-	  }
-	  // Implicit key determined by the index in the set
-	  return index.toString(36);
-	}
-
-	/**
-	 * Escape a component key so that it is safe to use in a reactid.
-	 *
-	 * @param {*} key Component key to be escaped.
-	 * @return {string} An escaped string.
-	 */
-	function escapeUserProvidedKey(text) {
-	  return ('' + text).replace(
-	    userProvidedKeyEscapeRegex,
-	    userProvidedKeyEscaper
-	  );
-	}
-
-	/**
-	 * Wrap a `key` value explicitly provided by the user to distinguish it from
-	 * implicitly-generated keys generated by a component's index in its parent.
-	 *
-	 * @param {string} key Value of a user-provided `key` attribute
-	 * @return {string}
-	 */
-	function wrapUserProvidedKey(key) {
-	  return '$' + escapeUserProvidedKey(key);
-	}
-
-	/**
-	 * @param {?*} children Children tree container.
-	 * @param {!string} nameSoFar Name of the key path so far.
-	 * @param {!number} indexSoFar Number of children encountered until this point.
-	 * @param {!function} callback Callback to invoke with each child found.
-	 * @param {?*} traverseContext Used to pass information throughout the traversal
-	 * process.
-	 * @return {!number} The number of children in this subtree.
-	 */
-	var traverseAllChildrenImpl =
-	  function(children, nameSoFar, indexSoFar, callback, traverseContext) {
-	    var subtreeCount = 0;  // Count of children found in the current subtree.
-	    if (Array.isArray(children)) {
-	      for (var i = 0; i < children.length; i++) {
-	        var child = children[i];
-	        var nextName = (
-	          nameSoFar +
-	          (nameSoFar ? SUBSEPARATOR : SEPARATOR) +
-	          getComponentKey(child, i)
-	        );
-	        var nextIndex = indexSoFar + subtreeCount;
-	        subtreeCount += traverseAllChildrenImpl(
-	          child,
-	          nextName,
-	          nextIndex,
-	          callback,
-	          traverseContext
-	        );
-	      }
-	    } else {
-	      var type = typeof children;
-	      var isOnlyChild = nameSoFar === '';
-	      // If it's the only child, treat the name as if it was wrapped in an array
-	      // so that it's consistent if the number of children grows
-	      var storageName =
-	        isOnlyChild ? SEPARATOR + getComponentKey(children, 0) : nameSoFar;
-	      if (children == null || type === 'boolean') {
-	        // All of the above are perceived as null.
-	        callback(traverseContext, null, storageName, indexSoFar);
-	        subtreeCount = 1;
-	      } else if (children.type && children.type.prototype &&
-	                 children.type.prototype.mountComponentIntoNode) {
-	        callback(traverseContext, children, storageName, indexSoFar);
-	        subtreeCount = 1;
-	      } else {
-	        if (type === 'object') {
-	          ("production" !== process.env.NODE_ENV ? invariant(
-	            !children || children.nodeType !== 1,
-	            'traverseAllChildren(...): Encountered an invalid child; DOM ' +
-	            'elements are not valid children of React components.'
-	          ) : invariant(!children || children.nodeType !== 1));
-	          for (var key in children) {
-	            if (children.hasOwnProperty(key)) {
-	              subtreeCount += traverseAllChildrenImpl(
-	                children[key],
-	                (
-	                  nameSoFar + (nameSoFar ? SUBSEPARATOR : SEPARATOR) +
-	                  wrapUserProvidedKey(key) + SUBSEPARATOR +
-	                  getComponentKey(children[key], 0)
-	                ),
-	                indexSoFar + subtreeCount,
-	                callback,
-	                traverseContext
-	              );
-	            }
-	          }
-	        } else if (type === 'string') {
-	          var normalizedText = ReactTextComponent(children);
-	          callback(traverseContext, normalizedText, storageName, indexSoFar);
-	          subtreeCount += 1;
-	        } else if (type === 'number') {
-	          var normalizedNumber = ReactTextComponent('' + children);
-	          callback(traverseContext, normalizedNumber, storageName, indexSoFar);
-	          subtreeCount += 1;
-	        }
-	      }
-	    }
-	    return subtreeCount;
-	  };
-
-	/**
-	 * Traverses children that are typically specified as `props.children`, but
-	 * might also be specified through attributes:
-	 *
-	 * - `traverseAllChildren(this.props.children, ...)`
-	 * - `traverseAllChildren(this.props.leftPanelChildren, ...)`
-	 *
-	 * The `traverseContext` is an optional argument that is passed through the
-	 * entire traversal. It can be used to store accumulations or anything else that
-	 * the callback might find relevant.
-	 *
-	 * @param {?*} children Children tree object.
-	 * @param {!function} callback To invoke upon traversing each child.
-	 * @param {?*} traverseContext Context for traversal.
-	 * @return {!number} The number of children in this subtree.
-	 */
-	function traverseAllChildren(children, callback, traverseContext) {
-	  if (children == null) {
-	    return 0;
-	  }
-
-	  return traverseAllChildrenImpl(children, '', 0, callback, traverseContext);
-	}
-
-	module.exports = traverseAllChildren;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
-/* 71 */
+/* 67 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -9826,7 +9484,7 @@
 
 	"use strict";
 
-	var mergeHelpers = __webpack_require__(119);
+	var mergeHelpers = __webpack_require__(113);
 
 	var checkMergeObjectArg = mergeHelpers.checkMergeObjectArg;
 	var checkMergeIntoObjectArg = mergeHelpers.checkMergeIntoObjectArg;
@@ -9854,159 +9512,7 @@
 
 
 /***/ },
-/* 72 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule ReactRootIndex
-	 * @typechecks
-	 */
-
-	"use strict";
-
-	var ReactRootIndexInjection = {
-	  /**
-	   * @param {function} _createReactRootIndex
-	   */
-	  injectCreateReactRootIndex: function(_createReactRootIndex) {
-	    ReactRootIndex.createReactRootIndex = _createReactRootIndex;
-	  }
-	};
-
-	var ReactRootIndex = {
-	  createReactRootIndex: null,
-	  injection: ReactRootIndexInjection
-	};
-
-	module.exports = ReactRootIndex;
-
-
-/***/ },
-/* 73 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule ReactMultiChildUpdateTypes
-	 */
-
-	"use strict";
-
-	var keyMirror = __webpack_require__(64);
-
-	/**
-	 * When a component's children are updated, a series of update configuration
-	 * objects are created in order to batch and serialize the required changes.
-	 *
-	 * Enumerates all the possible types of update configurations.
-	 *
-	 * @internal
-	 */
-	var ReactMultiChildUpdateTypes = keyMirror({
-	  INSERT_MARKUP: null,
-	  MOVE_EXISTING: null,
-	  REMOVE_NODE: null,
-	  TEXT_CONTENT: null
-	});
-
-	module.exports = ReactMultiChildUpdateTypes;
-
-
-/***/ },
-/* 74 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule flattenChildren
-	 */
-
-	"use strict";
-
-	var traverseAllChildren = __webpack_require__(70);
-	var warning = __webpack_require__(41);
-
-	/**
-	 * @param {function} traverseContext Context passed through traversal.
-	 * @param {?ReactComponent} child React child component.
-	 * @param {!string} name String name of key path to child.
-	 */
-	function flattenSingleChildIntoContext(traverseContext, child, name) {
-	  // We found a component instance.
-	  var result = traverseContext;
-	  var keyUnique = !result.hasOwnProperty(name);
-	  ("production" !== process.env.NODE_ENV ? warning(
-	    keyUnique,
-	    'flattenChildren(...): Encountered two children with the same key, ' +
-	    '`%s`. Child keys must be unique; when two children share a key, only ' +
-	    'the first child will be used.',
-	    name
-	  ) : null);
-	  if (keyUnique && child != null) {
-	    result[name] = child;
-	  }
-	}
-
-	/**
-	 * Flattens children that are typically specified as `props.children`. Any null
-	 * children will not be included in the resulting object.
-	 * @return {!object} flattened children keyed by name.
-	 */
-	function flattenChildren(children) {
-	  if (children == null) {
-	    return children;
-	  }
-	  var result = {};
-	  traverseAllChildren(children, flattenSingleChildIntoContext, result);
-	  return result;
-	}
-
-	module.exports = flattenChildren;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
-/* 75 */
+/* 68 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -10030,12 +9536,12 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPropagators = __webpack_require__(121);
-	var ExecutionEnvironment = __webpack_require__(42);
-	var SyntheticInputEvent = __webpack_require__(156);
+	var EventConstants = __webpack_require__(47);
+	var EventPropagators = __webpack_require__(114);
+	var ExecutionEnvironment = __webpack_require__(41);
+	var SyntheticInputEvent = __webpack_require__(115);
 
-	var keyOf = __webpack_require__(103);
+	var keyOf = __webpack_require__(96);
 
 	var canUseTextInputEvent = (
 	  ExecutionEnvironment.canUseDOM &&
@@ -10234,7 +9740,7 @@
 
 
 /***/ },
-/* 76 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -10257,16 +9763,16 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPluginHub = __webpack_require__(120);
-	var EventPropagators = __webpack_require__(121);
-	var ExecutionEnvironment = __webpack_require__(42);
-	var ReactUpdates = __webpack_require__(62);
-	var SyntheticEvent = __webpack_require__(122);
+	var EventConstants = __webpack_require__(47);
+	var EventPluginHub = __webpack_require__(116);
+	var EventPropagators = __webpack_require__(114);
+	var ExecutionEnvironment = __webpack_require__(41);
+	var ReactUpdates = __webpack_require__(50);
+	var SyntheticEvent = __webpack_require__(117);
 
-	var isEventSupported = __webpack_require__(123);
-	var isTextInputElement = __webpack_require__(124);
-	var keyOf = __webpack_require__(103);
+	var isEventSupported = __webpack_require__(118);
+	var isTextInputElement = __webpack_require__(119);
+	var keyOf = __webpack_require__(96);
 
 	var topLevelTypes = EventConstants.topLevelTypes;
 
@@ -10627,7 +10133,7 @@
 
 
 /***/ },
-/* 77 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -10663,7 +10169,7 @@
 
 
 /***/ },
-/* 78 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -10687,14 +10193,14 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPropagators = __webpack_require__(121);
-	var ExecutionEnvironment = __webpack_require__(42);
-	var ReactInputSelection = __webpack_require__(125);
-	var SyntheticCompositionEvent = __webpack_require__(126);
+	var EventConstants = __webpack_require__(47);
+	var EventPropagators = __webpack_require__(114);
+	var ExecutionEnvironment = __webpack_require__(41);
+	var ReactInputSelection = __webpack_require__(120);
+	var SyntheticCompositionEvent = __webpack_require__(121);
 
-	var getTextContentAccessor = __webpack_require__(127);
-	var keyOf = __webpack_require__(103);
+	var getTextContentAccessor = __webpack_require__(122);
+	var keyOf = __webpack_require__(96);
 
 	var END_KEYCODES = [9, 13, 27, 32]; // Tab, Return, Esc, Space
 	var START_KEYCODE = 229;
@@ -10933,7 +10439,7 @@
 
 
 /***/ },
-/* 79 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -10956,7 +10462,7 @@
 
 	"use strict";
 
-	 var keyOf = __webpack_require__(103);
+	 var keyOf = __webpack_require__(96);
 
 	/**
 	 * Module that is injectable into `EventPluginHub`, that specifies a
@@ -10984,7 +10490,7 @@
 
 
 /***/ },
-/* 80 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11008,12 +10514,12 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPropagators = __webpack_require__(121);
-	var SyntheticMouseEvent = __webpack_require__(128);
+	var EventConstants = __webpack_require__(47);
+	var EventPropagators = __webpack_require__(114);
+	var SyntheticMouseEvent = __webpack_require__(123);
 
-	var ReactMount = __webpack_require__(34);
-	var keyOf = __webpack_require__(103);
+	var ReactMount = __webpack_require__(33);
+	var keyOf = __webpack_require__(96);
 
 	var topLevelTypes = EventConstants.topLevelTypes;
 	var getFirstReactDOM = ReactMount.getFirstReactDOM;
@@ -11135,7 +10641,7 @@
 
 
 /***/ },
-/* 81 */
+/* 74 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11160,8 +10666,8 @@
 
 	"use strict";
 
-	var DOMProperty = __webpack_require__(49);
-	var ExecutionEnvironment = __webpack_require__(42);
+	var DOMProperty = __webpack_require__(44);
+	var ExecutionEnvironment = __webpack_require__(41);
 
 	var MUST_USE_ATTRIBUTE = DOMProperty.injection.MUST_USE_ATTRIBUTE;
 	var MUST_USE_PROPERTY = DOMProperty.injection.MUST_USE_PROPERTY;
@@ -11330,7 +10836,7 @@
 
 
 /***/ },
-/* 82 */
+/* 75 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11354,7 +10860,7 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
+	var EventConstants = __webpack_require__(47);
 
 	var emptyFunction = __webpack_require__(104);
 
@@ -11399,7 +10905,7 @@
 
 
 /***/ },
-/* 83 */
+/* 76 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -11422,10 +10928,10 @@
 
 	"use strict";
 
-	var ReactEmptyComponent = __webpack_require__(56);
-	var ReactMount = __webpack_require__(34);
+	var ReactEmptyComponent = __webpack_require__(57);
+	var ReactMount = __webpack_require__(33);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	var ReactBrowserComponentMixin = {
 	  /**
@@ -11449,10 +10955,10 @@
 
 	module.exports = ReactBrowserComponentMixin;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 84 */
+/* 77 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -11477,15 +10983,15 @@
 
 	"use strict";
 
-	var ReactDOMIDOperations = __webpack_require__(130);
-	var ReactMarkupChecksum = __webpack_require__(107);
-	var ReactMount = __webpack_require__(34);
-	var ReactPerf = __webpack_require__(36);
-	var ReactReconcileTransaction = __webpack_require__(131);
+	var ReactDOMIDOperations = __webpack_require__(125);
+	var ReactMarkupChecksum = __webpack_require__(102);
+	var ReactMount = __webpack_require__(33);
+	var ReactPerf = __webpack_require__(35);
+	var ReactReconcileTransaction = __webpack_require__(126);
 
-	var getReactRootElementInContainer = __webpack_require__(106);
-	var invariant = __webpack_require__(54);
-	var setInnerHTML = __webpack_require__(132);
+	var getReactRootElementInContainer = __webpack_require__(99);
+	var invariant = __webpack_require__(48);
+	var setInnerHTML = __webpack_require__(127);
 
 
 	var ELEMENT_NODE_TYPE = 1;
@@ -11581,10 +11087,10 @@
 
 	module.exports = ReactComponentBrowserEnvironment;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 85 */
+/* 78 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11607,11 +11113,11 @@
 
 	"use strict";
 
-	var ReactUpdates = __webpack_require__(62);
-	var Transaction = __webpack_require__(118);
+	var ReactUpdates = __webpack_require__(50);
+	var Transaction = __webpack_require__(111);
 
 	var emptyFunction = __webpack_require__(104);
-	var mixInto = __webpack_require__(65);
+	var mixInto = __webpack_require__(63);
 
 	var RESET_BATCHED_UPDATES = {
 	  initialize: emptyFunction,
@@ -11665,7 +11171,7 @@
 
 
 /***/ },
-/* 86 */
+/* 79 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11688,12 +11194,12 @@
 
 	"use strict";
 
-	var AutoFocusMixin = __webpack_require__(129);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
+	var AutoFocusMixin = __webpack_require__(124);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
 
-	var keyMirror = __webpack_require__(64);
+	var keyMirror = __webpack_require__(51);
 
 	// Store a reference to the <button> `ReactDOMComponent`.
 	var button = ReactDOM.button;
@@ -11740,7 +11246,7 @@
 
 
 /***/ },
-/* 87 */
+/* 80 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11763,11 +11269,11 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var LocalEventTrapMixin = __webpack_require__(133);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
+	var EventConstants = __webpack_require__(47);
+	var LocalEventTrapMixin = __webpack_require__(128);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
 
 	// Store a reference to the <form> `ReactDOMComponent`.
 	var form = ReactDOM.form;
@@ -11800,7 +11306,7 @@
 
 
 /***/ },
-/* 88 */
+/* 81 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -11823,11 +11329,11 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var LocalEventTrapMixin = __webpack_require__(133);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
+	var EventConstants = __webpack_require__(47);
+	var LocalEventTrapMixin = __webpack_require__(128);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
 
 	// Store a reference to the <img> `ReactDOMComponent`.
 	var img = ReactDOM.img;
@@ -11858,7 +11364,7 @@
 
 
 /***/ },
-/* 89 */
+/* 82 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -11881,15 +11387,15 @@
 
 	"use strict";
 
-	var AutoFocusMixin = __webpack_require__(129);
-	var DOMPropertyOperations = __webpack_require__(22);
-	var LinkedValueUtils = __webpack_require__(134);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
-	var ReactMount = __webpack_require__(34);
+	var AutoFocusMixin = __webpack_require__(124);
+	var DOMPropertyOperations = __webpack_require__(21);
+	var LinkedValueUtils = __webpack_require__(129);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
+	var ReactMount = __webpack_require__(33);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 	var merge = __webpack_require__(52);
 
 	// Store a reference to the <input> `ReactDOMComponent`.
@@ -12044,10 +11550,10 @@
 
 	module.exports = ReactDOMInput;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 90 */
+/* 83 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -12070,11 +11576,11 @@
 
 	"use strict";
 
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
 
-	var warning = __webpack_require__(41);
+	var warning = __webpack_require__(40);
 
 	// Store a reference to the <option> `ReactDOMComponent`.
 	var option = ReactDOM.option;
@@ -12106,10 +11612,10 @@
 
 	module.exports = ReactDOMOption;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 91 */
+/* 84 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -12132,11 +11638,11 @@
 
 	"use strict";
 
-	var AutoFocusMixin = __webpack_require__(129);
-	var LinkedValueUtils = __webpack_require__(134);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
+	var AutoFocusMixin = __webpack_require__(124);
+	var LinkedValueUtils = __webpack_require__(129);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
 
 	var merge = __webpack_require__(52);
 
@@ -12296,7 +11802,7 @@
 
 
 /***/ },
-/* 92 */
+/* 85 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -12319,17 +11825,17 @@
 
 	"use strict";
 
-	var AutoFocusMixin = __webpack_require__(129);
-	var DOMPropertyOperations = __webpack_require__(22);
-	var LinkedValueUtils = __webpack_require__(134);
-	var ReactBrowserComponentMixin = __webpack_require__(83);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
+	var AutoFocusMixin = __webpack_require__(124);
+	var DOMPropertyOperations = __webpack_require__(21);
+	var LinkedValueUtils = __webpack_require__(129);
+	var ReactBrowserComponentMixin = __webpack_require__(76);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 	var merge = __webpack_require__(52);
 
-	var warning = __webpack_require__(41);
+	var warning = __webpack_require__(40);
 
 	// Store a reference to the <textarea> `ReactDOMComponent`.
 	var textarea = ReactDOM.textarea;
@@ -12442,10 +11948,10 @@
 
 	module.exports = ReactDOMTextarea;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 93 */
+/* 86 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -12469,16 +11975,16 @@
 
 	"use strict";
 
-	var EventListener = __webpack_require__(135);
-	var ExecutionEnvironment = __webpack_require__(42);
-	var PooledClass = __webpack_require__(69);
-	var ReactInstanceHandles = __webpack_require__(33);
-	var ReactMount = __webpack_require__(34);
-	var ReactUpdates = __webpack_require__(62);
+	var EventListener = __webpack_require__(132);
+	var ExecutionEnvironment = __webpack_require__(41);
+	var PooledClass = __webpack_require__(53);
+	var ReactInstanceHandles = __webpack_require__(32);
+	var ReactMount = __webpack_require__(33);
+	var ReactUpdates = __webpack_require__(50);
 
-	var getEventTarget = __webpack_require__(136);
-	var getUnboundedScrollPosition = __webpack_require__(137);
-	var mixInto = __webpack_require__(65);
+	var getEventTarget = __webpack_require__(133);
+	var getUnboundedScrollPosition = __webpack_require__(134);
+	var mixInto = __webpack_require__(63);
 
 	/**
 	 * Finds the parent React component of `node`.
@@ -12640,7 +12146,7 @@
 
 
 /***/ },
-/* 94 */
+/* 87 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -12663,16 +12169,16 @@
 
 	"use strict";
 
-	var DOMProperty = __webpack_require__(49);
-	var EventPluginHub = __webpack_require__(120);
-	var ReactComponent = __webpack_require__(25);
-	var ReactCompositeComponent = __webpack_require__(26);
-	var ReactDOM = __webpack_require__(30);
-	var ReactEmptyComponent = __webpack_require__(56);
-	var ReactBrowserEventEmitter = __webpack_require__(102);
-	var ReactPerf = __webpack_require__(36);
-	var ReactRootIndex = __webpack_require__(72);
-	var ReactUpdates = __webpack_require__(62);
+	var DOMProperty = __webpack_require__(44);
+	var EventPluginHub = __webpack_require__(116);
+	var ReactComponent = __webpack_require__(24);
+	var ReactCompositeComponent = __webpack_require__(25);
+	var ReactDOM = __webpack_require__(29);
+	var ReactEmptyComponent = __webpack_require__(57);
+	var ReactBrowserEventEmitter = __webpack_require__(95);
+	var ReactPerf = __webpack_require__(35);
+	var ReactRootIndex = __webpack_require__(97);
+	var ReactUpdates = __webpack_require__(50);
 
 	var ReactInjection = {
 	  Component: ReactComponent.injection,
@@ -12691,7 +12197,7 @@
 
 
 /***/ },
-/* 95 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -12714,15 +12220,15 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPropagators = __webpack_require__(121);
-	var ReactInputSelection = __webpack_require__(125);
-	var SyntheticEvent = __webpack_require__(122);
+	var EventConstants = __webpack_require__(47);
+	var EventPropagators = __webpack_require__(114);
+	var ReactInputSelection = __webpack_require__(120);
+	var SyntheticEvent = __webpack_require__(117);
 
-	var getActiveElement = __webpack_require__(138);
-	var isTextInputElement = __webpack_require__(124);
-	var keyOf = __webpack_require__(103);
-	var shallowEqual = __webpack_require__(139);
+	var getActiveElement = __webpack_require__(130);
+	var isTextInputElement = __webpack_require__(119);
+	var keyOf = __webpack_require__(96);
+	var shallowEqual = __webpack_require__(131);
 
 	var topLevelTypes = EventConstants.topLevelTypes;
 
@@ -12897,7 +12403,7 @@
 
 
 /***/ },
-/* 96 */
+/* 89 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -12939,7 +12445,7 @@
 
 
 /***/ },
-/* 97 */
+/* 90 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -12962,21 +12468,21 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPluginUtils = __webpack_require__(23);
-	var EventPropagators = __webpack_require__(121);
-	var SyntheticClipboardEvent = __webpack_require__(142);
-	var SyntheticEvent = __webpack_require__(122);
-	var SyntheticFocusEvent = __webpack_require__(143);
-	var SyntheticKeyboardEvent = __webpack_require__(144);
-	var SyntheticMouseEvent = __webpack_require__(128);
-	var SyntheticDragEvent = __webpack_require__(145);
-	var SyntheticTouchEvent = __webpack_require__(146);
-	var SyntheticUIEvent = __webpack_require__(147);
-	var SyntheticWheelEvent = __webpack_require__(148);
+	var EventConstants = __webpack_require__(47);
+	var EventPluginUtils = __webpack_require__(22);
+	var EventPropagators = __webpack_require__(114);
+	var SyntheticClipboardEvent = __webpack_require__(135);
+	var SyntheticEvent = __webpack_require__(117);
+	var SyntheticFocusEvent = __webpack_require__(136);
+	var SyntheticKeyboardEvent = __webpack_require__(137);
+	var SyntheticMouseEvent = __webpack_require__(123);
+	var SyntheticDragEvent = __webpack_require__(138);
+	var SyntheticTouchEvent = __webpack_require__(139);
+	var SyntheticUIEvent = __webpack_require__(140);
+	var SyntheticWheelEvent = __webpack_require__(141);
 
-	var invariant = __webpack_require__(54);
-	var keyOf = __webpack_require__(103);
+	var invariant = __webpack_require__(48);
+	var keyOf = __webpack_require__(96);
 
 	var topLevelTypes = EventConstants.topLevelTypes;
 
@@ -13362,10 +12868,10 @@
 
 	module.exports = SimpleEventPlugin;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 98 */
+/* 91 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -13390,7 +12896,7 @@
 
 	"use strict";
 
-	var DOMProperty = __webpack_require__(49);
+	var DOMProperty = __webpack_require__(44);
 
 	var MUST_USE_ATTRIBUTE = DOMProperty.injection.MUST_USE_ATTRIBUTE;
 
@@ -13468,7 +12974,7 @@
 
 
 /***/ },
-/* 99 */
+/* 92 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -13493,9 +12999,9 @@
 	"use strict";
 
 	// Defeat circular references by requiring this directly.
-	var ReactCompositeComponent = __webpack_require__(26);
+	var ReactCompositeComponent = __webpack_require__(25);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Create a component that will throw an exception when unmounted.
@@ -13535,10 +13041,10 @@
 
 	module.exports = createFullPageComponent;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 100 */
+/* 93 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -13562,12 +13068,12 @@
 
 	"use strict";
 
-	var DOMProperty = __webpack_require__(49);
-	var ReactDefaultPerfAnalysis = __webpack_require__(140);
-	var ReactMount = __webpack_require__(34);
-	var ReactPerf = __webpack_require__(36);
+	var DOMProperty = __webpack_require__(44);
+	var ReactDefaultPerfAnalysis = __webpack_require__(142);
+	var ReactMount = __webpack_require__(33);
+	var ReactPerf = __webpack_require__(35);
 
-	var performanceNow = __webpack_require__(141);
+	var performanceNow = __webpack_require__(143);
 
 	function roundFloat(val) {
 	  return Math.floor(val * 100) / 100;
@@ -13805,7 +13311,7 @@
 
 
 /***/ },
-/* 101 */
+/* 94 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -13829,11 +13335,11 @@
 
 	"use strict";
 
-	var CSSProperty = __webpack_require__(149);
+	var CSSProperty = __webpack_require__(144);
 
-	var dangerousStyleValue = __webpack_require__(150);
-	var hyphenateStyleName = __webpack_require__(151);
-	var memoizeStringOnly = __webpack_require__(51);
+	var dangerousStyleValue = __webpack_require__(145);
+	var hyphenateStyleName = __webpack_require__(146);
+	var memoizeStringOnly = __webpack_require__(46);
 
 	var processStyleName = memoizeStringOnly(function(styleName) {
 	  return hyphenateStyleName(styleName);
@@ -13908,7 +13414,7 @@
 
 
 /***/ },
-/* 102 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -13932,13 +13438,13 @@
 
 	"use strict";
 
-	var EventConstants = __webpack_require__(53);
-	var EventPluginHub = __webpack_require__(120);
-	var EventPluginRegistry = __webpack_require__(152);
-	var ReactEventEmitterMixin = __webpack_require__(153);
-	var ViewportMetrics = __webpack_require__(154);
+	var EventConstants = __webpack_require__(47);
+	var EventPluginHub = __webpack_require__(116);
+	var EventPluginRegistry = __webpack_require__(147);
+	var ReactEventEmitterMixin = __webpack_require__(148);
+	var ViewportMetrics = __webpack_require__(149);
 
-	var isEventSupported = __webpack_require__(123);
+	var isEventSupported = __webpack_require__(118);
 	var merge = __webpack_require__(52);
 
 	/**
@@ -14274,7 +13780,7 @@
 
 
 /***/ },
-/* 103 */
+/* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -14321,7 +13827,7 @@
 
 
 /***/ },
-/* 104 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -14339,38 +13845,31 @@
 	 * See the License for the specific language governing permissions and
 	 * limitations under the License.
 	 *
-	 * @providesModule emptyFunction
+	 * @providesModule ReactRootIndex
+	 * @typechecks
 	 */
 
-	var copyProperties = __webpack_require__(155);
+	"use strict";
 
-	function makeEmptyFunction(arg) {
-	  return function() {
-	    return arg;
-	  };
-	}
+	var ReactRootIndexInjection = {
+	  /**
+	   * @param {function} _createReactRootIndex
+	   */
+	  injectCreateReactRootIndex: function(_createReactRootIndex) {
+	    ReactRootIndex.createReactRootIndex = _createReactRootIndex;
+	  }
+	};
 
-	/**
-	 * This function accepts and discards inputs; it has no side effects. This is
-	 * primarily useful idiomatically for overridable function endpoints which
-	 * always need to be callable, since JS lacks a null-call idiom ala Cocoa.
-	 */
-	function emptyFunction() {}
+	var ReactRootIndex = {
+	  createReactRootIndex: null,
+	  injection: ReactRootIndexInjection
+	};
 
-	copyProperties(emptyFunction, {
-	  thatReturns: makeEmptyFunction,
-	  thatReturnsFalse: makeEmptyFunction(false),
-	  thatReturnsTrue: makeEmptyFunction(true),
-	  thatReturnsNull: makeEmptyFunction(null),
-	  thatReturnsThis: function() { return this; },
-	  thatReturnsArgument: function(arg) { return arg; }
-	});
-
-	module.exports = emptyFunction;
+	module.exports = ReactRootIndex;
 
 
 /***/ },
-/* 105 */
+/* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -14392,7 +13891,7 @@
 	 * @typechecks
 	 */
 
-	var isTextNode = __webpack_require__(157);
+	var isTextNode = __webpack_require__(150);
 
 	/*jslint bitwise:true */
 
@@ -14425,7 +13924,7 @@
 
 
 /***/ },
-/* 106 */
+/* 99 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -14471,7 +13970,117 @@
 
 
 /***/ },
-/* 107 */
+/* 100 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule ReactMultiChildUpdateTypes
+	 */
+
+	"use strict";
+
+	var keyMirror = __webpack_require__(51);
+
+	/**
+	 * When a component's children are updated, a series of update configuration
+	 * objects are created in order to batch and serialize the required changes.
+	 *
+	 * Enumerates all the possible types of update configurations.
+	 *
+	 * @internal
+	 */
+	var ReactMultiChildUpdateTypes = keyMirror({
+	  INSERT_MARKUP: null,
+	  MOVE_EXISTING: null,
+	  REMOVE_NODE: null,
+	  TEXT_CONTENT: null
+	});
+
+	module.exports = ReactMultiChildUpdateTypes;
+
+
+/***/ },
+/* 101 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule flattenChildren
+	 */
+
+	"use strict";
+
+	var traverseAllChildren = __webpack_require__(54);
+	var warning = __webpack_require__(40);
+
+	/**
+	 * @param {function} traverseContext Context passed through traversal.
+	 * @param {?ReactComponent} child React child component.
+	 * @param {!string} name String name of key path to child.
+	 */
+	function flattenSingleChildIntoContext(traverseContext, child, name) {
+	  // We found a component instance.
+	  var result = traverseContext;
+	  var keyUnique = !result.hasOwnProperty(name);
+	  ("production" !== process.env.NODE_ENV ? warning(
+	    keyUnique,
+	    'flattenChildren(...): Encountered two children with the same key, ' +
+	    '`%s`. Child keys must be unique; when two children share a key, only ' +
+	    'the first child will be used.',
+	    name
+	  ) : null);
+	  if (keyUnique && child != null) {
+	    result[name] = child;
+	  }
+	}
+
+	/**
+	 * Flattens children that are typically specified as `props.children`. Any null
+	 * children will not be included in the resulting object.
+	 * @return {!object} flattened children keyed by name.
+	 */
+	function flattenChildren(children) {
+	  if (children == null) {
+	    return children;
+	  }
+	  var result = {};
+	  traverseAllChildren(children, flattenSingleChildIntoContext, result);
+	  return result;
+	}
+
+	module.exports = flattenChildren;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 102 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -14494,7 +14103,7 @@
 
 	"use strict";
 
-	var adler32 = __webpack_require__(158);
+	var adler32 = __webpack_require__(151);
 
 	var ReactMarkupChecksum = {
 	  CHECKSUM_ATTR_NAME: 'data-react-checksum',
@@ -14530,7 +14139,7 @@
 
 
 /***/ },
-/* 108 */
+/* 103 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -14554,13 +14163,13 @@
 
 	"use strict";
 
-	var PooledClass = __webpack_require__(69);
-	var CallbackQueue = __webpack_require__(117);
-	var ReactPutListenerQueue = __webpack_require__(159);
-	var Transaction = __webpack_require__(118);
+	var PooledClass = __webpack_require__(53);
+	var CallbackQueue = __webpack_require__(110);
+	var ReactPutListenerQueue = __webpack_require__(153);
+	var Transaction = __webpack_require__(111);
 
 	var emptyFunction = __webpack_require__(104);
-	var mixInto = __webpack_require__(65);
+	var mixInto = __webpack_require__(63);
 
 	/**
 	 * Provides a `CallbackQueue` queue for collecting `onDOMReady` callbacks
@@ -14651,420 +14260,399 @@
 
 
 /***/ },
-/* 109 */
+/* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
-	
 	/**
-	 * This is the common logic for both the Node.js and web browser
-	 * implementations of `debug()`.
+	 * Copyright 2013-2014 Facebook, Inc.
 	 *
-	 * Expose `debug()` as the module.
-	 */
-
-	exports = module.exports = debug;
-	exports.coerce = coerce;
-	exports.disable = disable;
-	exports.enable = enable;
-	exports.enabled = enabled;
-	exports.humanize = __webpack_require__(173);
-
-	/**
-	 * The currently active debug mode names, and names to skip.
-	 */
-
-	exports.names = [];
-	exports.skips = [];
-
-	/**
-	 * Map of special "%n" handling functions, for the debug "format" argument.
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
 	 *
-	 * Valid key names are a single, lowercased letter, i.e. "n".
-	 */
-
-	exports.formatters = {};
-
-	/**
-	 * Previously assigned color.
-	 */
-
-	var prevColor = 0;
-
-	/**
-	 * Previous log timestamp.
-	 */
-
-	var prevTime;
-
-	/**
-	 * Select a color.
+	 * http://www.apache.org/licenses/LICENSE-2.0
 	 *
-	 * @return {Number}
-	 * @api private
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule emptyFunction
 	 */
 
-	function selectColor() {
-	  return exports.colors[prevColor++ % exports.colors.length];
-	}
-
-	/**
-	 * Create a debugger with the given `namespace`.
-	 *
-	 * @param {String} namespace
-	 * @return {Function}
-	 * @api public
-	 */
-
-	function debug(namespace) {
-
-	  // define the `disabled` version
-	  function disabled() {
-	  }
-	  disabled.enabled = false;
-
-	  // define the `enabled` version
-	  function enabled() {
-
-	    var self = enabled;
-
-	    // set `diff` timestamp
-	    var curr = +new Date();
-	    var ms = curr - (prevTime || curr);
-	    self.diff = ms;
-	    self.prev = prevTime;
-	    self.curr = curr;
-	    prevTime = curr;
-
-	    // add the `color` if not set
-	    if (null == self.useColors) self.useColors = exports.useColors();
-	    if (null == self.color && self.useColors) self.color = selectColor();
-
-	    var args = Array.prototype.slice.call(arguments);
-
-	    args[0] = exports.coerce(args[0]);
-
-	    if ('string' !== typeof args[0]) {
-	      // anything else let's inspect with %o
-	      args = ['%o'].concat(args);
-	    }
-
-	    // apply any `formatters` transformations
-	    var index = 0;
-	    args[0] = args[0].replace(/%([a-z%])/g, function(match, format) {
-	      // if we encounter an escaped % then don't increase the array index
-	      if (match === '%%') return match;
-	      index++;
-	      var formatter = exports.formatters[format];
-	      if ('function' === typeof formatter) {
-	        var val = args[index];
-	        match = formatter.call(self, val);
-
-	        // now we need to remove `args[index]` since it's inlined in the `format`
-	        args.splice(index, 1);
-	        index--;
-	      }
-	      return match;
-	    });
-
-	    if ('function' === typeof exports.formatArgs) {
-	      args = exports.formatArgs.apply(self, args);
-	    }
-	    var logFn = enabled.log || exports.log || console.log.bind(console);
-	    logFn.apply(self, args);
-	  }
-	  enabled.enabled = true;
-
-	  var fn = exports.enabled(namespace) ? enabled : disabled;
-
-	  fn.namespace = namespace;
-
-	  return fn;
-	}
-
-	/**
-	 * Enables a debug mode by namespaces. This can include modes
-	 * separated by a colon and wildcards.
-	 *
-	 * @param {String} namespaces
-	 * @api public
-	 */
-
-	function enable(namespaces) {
-	  exports.save(namespaces);
-
-	  var split = (namespaces || '').split(/[\s,]+/);
-	  var len = split.length;
-
-	  for (var i = 0; i < len; i++) {
-	    if (!split[i]) continue; // ignore empty strings
-	    namespaces = split[i].replace(/\*/g, '.*?');
-	    if (namespaces[0] === '-') {
-	      exports.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
-	    } else {
-	      exports.names.push(new RegExp('^' + namespaces + '$'));
-	    }
-	  }
-	}
-
-	/**
-	 * Disable debug output.
-	 *
-	 * @api public
-	 */
-
-	function disable() {
-	  exports.enable('');
-	}
-
-	/**
-	 * Returns true if the given mode name is enabled, false otherwise.
-	 *
-	 * @param {String} name
-	 * @return {Boolean}
-	 * @api public
-	 */
-
-	function enabled(name) {
-	  var i, len;
-	  for (i = 0, len = exports.skips.length; i < len; i++) {
-	    if (exports.skips[i].test(name)) {
-	      return false;
-	    }
-	  }
-	  for (i = 0, len = exports.names.length; i < len; i++) {
-	    if (exports.names[i].test(name)) {
-	      return true;
-	    }
-	  }
-	  return false;
-	}
-
-	/**
-	 * Coerce `val`.
-	 *
-	 * @param {Mixed} val
-	 * @return {Mixed}
-	 * @api private
-	 */
-
-	function coerce(val) {
-	  if (val instanceof Error) return val.stack || val.message;
-	  return val;
-	}
-
-
-/***/ },
-/* 110 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var utils = __webpack_require__(46);
-
-	function encode(val) {
-	  return encodeURIComponent(val).
-	    replace(/%40/gi, '@').
-	    replace(/%3A/gi, ':').
-	    replace(/%24/g, '$').
-	    replace(/%2C/gi, ',').
-	    replace(/%20/g, '+');
-	}
-
-	module.exports = function buildUrl(url, params) {
-	  if (!params) {
-	    return url;
-	  }
-
-	  var parts = [];
-
-	  utils.forEach(params, function (val, key) {
-	    if (val === null || typeof val === 'undefined') {
-	      return;
-	    }
-	    if (!utils.isArray(val)) {
-	      val = [val];
-	    }
-
-	    utils.forEach(val, function (v) {
-	      if (utils.isDate(v)) {
-	        v = v.toISOString();
-	      }
-	      else if (utils.isObject(v)) {
-	        v = JSON.stringify(v);
-	      }
-	      parts.push(encode(key) + '=' + encode(v));
-	    });
-	  });
-
-	  if (parts.length > 0) {
-	    url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
-	  }
-
-	  return url;
-	};
-
-/***/ },
-/* 111 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var utils = __webpack_require__(46);
-
-	module.exports = {
-	  write: function write(name, value, expires, path, domain, secure) {
-	    var cookie = [];
-	    cookie.push(name + '=' + encodeURIComponent(value));
-
-	    if (utils.isNumber(expires)) {
-	      cookie.push('expires=' + new Date(expires).toGMTString());
-	    }
-
-	    if (utils.isString(path)) {
-	      cookie.push('path=' + path);
-	    }
-
-	    if (utils.isString(domain)) {
-	      cookie.push('domain=' + domain);
-	    }
-
-	    if (secure === true) {
-	      cookie.push('secure');
-	    }
-
-	    document.cookie = cookie.join('; ');
-	  },
-
-	  read: function read(name) {
-	    var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
-	    return (match ? decodeURIComponent(match[3]) : null);
-	  },
-
-	  remove: function remove(name) {
-	    this.write(name, '', Date.now() - 86400000);
-	  }
-	};
-
-/***/ },
-/* 112 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var utils = __webpack_require__(46);
-
-	/**
-	 * Parse headers into an object
-	 *
-	 * ```
-	 * Date: Wed, 27 Aug 2014 08:58:49 GMT
-	 * Content-Type: application/json
-	 * Connection: keep-alive
-	 * Transfer-Encoding: chunked
-	 * ```
-	 *
-	 * @param {String} headers Headers needing to be parsed
-	 * @returns {Object} Headers parsed into an object
-	 */
-	module.exports = function parseHeaders(headers) {
-	  var parsed = {}, key, val, i;
-
-	  if (!headers) return parsed;
-
-	  utils.forEach(headers.split('\n'), function(line) {
-	    i = line.indexOf(':');
-	    key = utils.trim(line.substr(0, i)).toLowerCase();
-	    val = utils.trim(line.substr(i + 1));
-
-	    if (key) {
-	      parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
-	    }
-	  });
-
-	  return parsed;
-	};
-
-/***/ },
-/* 113 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var utils = __webpack_require__(46);
-
-	/**
-	 * Transform the data for a request or a response
-	 *
-	 * @param {Object|String} data The data to be transformed
-	 * @param {Array} headers The headers for the request or response
-	 * @param {Array|Function} fns A single function or Array of functions
-	 * @returns {*} The resulting transformed data
-	 */
-	module.exports = function transformData(data, headers, fns) {
-	  utils.forEach(fns, function (fn) {
-	    data = fn(data, headers);
-	  });
-
-	  return data;
-	};
-
-/***/ },
-/* 114 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var msie = /(msie|trident)/i.test(navigator.userAgent);
-	var utils = __webpack_require__(46);
-	var urlParsingNode = document.createElement('a');
-	var originUrl = urlResolve(window.location.href);
-
-	/**
-	 * Parse a URL to discover it's components
-	 *
-	 * @param {String} url The URL to be parsed
-	 * @returns {Object}
-	 */
-	function urlResolve(url) {
-	  var href = url;
-
-	  if (msie) {
-	    // IE needs attribute set twice to normalize properties
-	    urlParsingNode.setAttribute('href', href);
-	    href = urlParsingNode.href;
-	  }
-
-	  urlParsingNode.setAttribute('href', href);
-
-	  // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
-	  return {
-	    href: urlParsingNode.href,
-	    protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
-	    host: urlParsingNode.host,
-	    search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
-	    hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
-	    hostname: urlParsingNode.hostname,
-	    port: urlParsingNode.port,
-	    pathname: (urlParsingNode.pathname.charAt(0) === '/')
-	      ? urlParsingNode.pathname
-	      : '/' + urlParsingNode.pathname
+	var copyProperties = __webpack_require__(152);
+
+	function makeEmptyFunction(arg) {
+	  return function() {
+	    return arg;
 	  };
 	}
 
 	/**
-	 * Determine if a URL shares the same origin as the current location
-	 *
-	 * @param {String} requestUrl The URL to test
-	 * @returns {boolean} True if URL shares the same origin, otherwise false
+	 * This function accepts and discards inputs; it has no side effects. This is
+	 * primarily useful idiomatically for overridable function endpoints which
+	 * always need to be callable, since JS lacks a null-call idiom ala Cocoa.
 	 */
-	module.exports = function urlIsSameOrigin(requestUrl) {
-	  var parsed = (utils.isString(requestUrl)) ? urlResolve(requestUrl) : requestUrl;
-	  return (parsed.protocol === originUrl.protocol &&
-	        parsed.host === originUrl.host);
+	function emptyFunction() {}
+
+	copyProperties(emptyFunction, {
+	  thatReturns: makeEmptyFunction,
+	  thatReturnsFalse: makeEmptyFunction(false),
+	  thatReturnsTrue: makeEmptyFunction(true),
+	  thatReturnsNull: makeEmptyFunction(null),
+	  thatReturnsThis: function() { return this; },
+	  thatReturnsArgument: function(arg) { return arg; }
+	});
+
+	module.exports = emptyFunction;
+
+
+/***/ },
+/* 105 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var utils = __webpack_require__(106);
+
+	var JSON_START = /^\s*(\[|\{[^\{])/;
+	var JSON_END = /[\}\]]\s*$/;
+	var PROTECTION_PREFIX = /^\)\]\}',?\n/;
+	var CONTENT_TYPE_APPLICATION_JSON = {
+	  'Content-Type': 'application/json;charset=utf-8'
+	};
+
+	module.exports = {
+	  transformRequest: [function (data) {
+	    return utils.isObject(data) &&
+	          !utils.isFile(data) &&
+	          !utils.isBlob(data) ?
+	            JSON.stringify(data) : data;
+	  }],
+
+	  transformResponse: [function (data) {
+	    if (typeof data === 'string') {
+	      data = data.replace(PROTECTION_PREFIX, '');
+	      if (JSON_START.test(data) && JSON_END.test(data)) {
+	        data = JSON.parse(data);
+	      }
+	    }
+	    return data;
+	  }],
+
+	  headers: {
+	    common: {
+	      'Accept': 'application/json, text/plain, */*'
+	    },
+	    patch: utils.merge(CONTENT_TYPE_APPLICATION_JSON),
+	    post: utils.merge(CONTENT_TYPE_APPLICATION_JSON),
+	    put: utils.merge(CONTENT_TYPE_APPLICATION_JSON)
+	  },
+
+	  xsrfCookieName: 'XSRF-TOKEN',
+	  xsrfHeaderName: 'X-XSRF-TOKEN'
 	};
 
 /***/ },
-/* 115 */
+/* 106 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// utils is a library of generic helper functions non-specific to axios
+
+	var toString = Object.prototype.toString;
+
+	/**
+	 * Determine if a value is an Array
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is an Array, otherwise false
+	 */
+	function isArray(val) {
+	  return toString.call(val) === '[object Array]';
+	}
+
+	/**
+	 * Determine if a value is a String
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is a String, otherwise false
+	 */
+	function isString(val) {
+	  return typeof val === 'string';
+	}
+
+	/**
+	 * Determine if a value is a Number
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is a Number, otherwise false
+	 */
+	function isNumber(val) {
+	  return typeof val === 'number';
+	}
+
+	/**
+	 * Determine if a value is an Object
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is an Object, otherwise false
+	 */
+	function isObject(val) {
+	  return val !== null && typeof val === 'object';
+	}
+
+	/**
+	 * Determine if a value is a Date
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is a Date, otherwise false
+	 */
+	function isDate(val) {
+	  return toString.call(val) === '[object Date]';
+	}
+
+	/**
+	 * Determine if a value is a File
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is a File, otherwise false
+	 */
+	function isFile(val) {
+	  return toString.call(val) === '[object File]';
+	}
+
+	/**
+	 * Determine if a value is a Blob
+	 *
+	 * @param {Object} val The value to test
+	 * @returns {boolean} True if value is a Blob, otherwise false
+	 */
+	function isBlob(val) {
+	  return toString.call(val) === '[object Blob]';
+	}
+
+	/**
+	 * Trim excess whitespace off the beginning and end of a string
+	 *
+	 * @param {String} str The String to trim
+	 * @returns {String} The String freed of excess whitespace
+	 */
+	function trim(str) {
+	  return str.replace(/^\s*/, '').replace(/\s*$/, '');
+	}
+
+	/**
+	 * Iterate over an Array or an Object invoking a function for each item.
+	 *
+	 * If `obj` is an Array or arguments callback will be called passing
+	 * the value, index, and complete array for each item.
+	 *
+	 * If 'obj' is an Object callback will be called passing
+	 * the value, key, and complete object for each property.
+	 *
+	 * @param {Object|Array} obj The object to iterate
+	 * @param {Function} fn The callback to invoke for each item
+	 */
+	function forEach(obj, fn) {
+	  // Don't bother if no value provided
+	  if (obj === null || typeof obj === 'undefined') {
+	    return;
+	  }
+
+	  // Check if obj is array-like
+	  var isArray = obj.constructor === Array || typeof obj.callee === 'function';
+
+	  // Force an array if not already something iterable
+	  if (typeof obj !== 'object' && !isArray) {
+	    obj = [obj];
+	  }
+
+	  // Iterate over array values
+	  if (isArray) {
+	    for (var i=0, l=obj.length; i<l; i++) {
+	      fn.call(null, obj[i], i, obj);
+	    }
+	  }
+	  // Iterate over object keys
+	  else {
+	    for (var key in obj) {
+	      if (obj.hasOwnProperty(key)) {
+	        fn.call(null, obj[key], key, obj);
+	      }
+	    }
+	  }
+	}
+
+	/**
+	 * Accepts varargs expecting each argument to be an object, then
+	 * immutably merges the properties of each object and returns result.
+	 *
+	 * When multiple objects contain the same key the later object in
+	 * the arguments list will take precedence.
+	 *
+	 * Example:
+	 *
+	 * ```js
+	 * var result = merge({foo: 123}, {foo: 456});
+	 * console.log(result.foo); // outputs 456
+	 * ```
+	 *
+	 * @param {Object} obj1 Object to merge
+	 * @returns {Object} Result of all merge properties
+	 */
+	function merge(obj1/*, obj2, obj3, ...*/) {
+	  var result = {};
+	  forEach(arguments, function (obj) {
+	    forEach(obj, function (val, key) {
+	      result[key] = val;
+	    });
+	  });
+	  return result;
+	}
+
+	module.exports = {
+	  isArray: isArray,
+	  isString: isString,
+	  isNumber: isNumber,
+	  isObject: isObject,
+	  isDate: isDate,
+	  isFile: isFile,
+	  isBlob: isBlob,
+	  forEach: forEach,
+	  merge: merge,
+	  trim: trim
+	};
+
+/***/ },
+/* 107 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Syntactic sugar for invoking a function and expanding an array for arguments.
+	 *
+	 * Common use case would be to use `Function.prototype.apply`.
+	 *
+	 *  ```js
+	 *  function f(x, y, z) {}
+	 *  var args = [1, 2, 3];
+	 *  f.apply(null, args);
+	 *  ```
+	 *
+	 * With `spread` this example can be re-written.
+	 *
+	 *  ```js
+	 *  spread(function(x, y, z) {})([1, 2, 3]);
+	 *  ```
+	 *
+	 * @param {Function} callback
+	 * @returns {Function}
+	 */
+	module.exports = function spread(callback) {
+	  return function (arr) {
+	    callback.apply(null, arr);
+	  };
+	};
+
+/***/ },
+/* 108 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var buildUrl = __webpack_require__(155);
+	var cookies = __webpack_require__(156);
+	var defaults = __webpack_require__(105);
+	var parseHeaders = __webpack_require__(157);
+	var transformData = __webpack_require__(158);
+	var urlIsSameOrigin = __webpack_require__(159);
+	var utils = __webpack_require__(106);
+
+	module.exports = function xhrAdapter(resolve, reject, config) {
+	  // Transform request data
+	  var data = transformData(
+	    config.data,
+	    config.headers,
+	    config.transformRequest
+	  );
+
+	  // Merge headers
+	  var headers = utils.merge(
+	    defaults.headers.common,
+	    defaults.headers[config.method] || {},
+	    config.headers || {}
+	  );
+
+	  // Create the request
+	  var request = new(XMLHttpRequest || ActiveXObject)('Microsoft.XMLHTTP');
+	  request.open(config.method, buildUrl(config.url, config.params), true);
+
+	  // Listen for ready state
+	  request.onreadystatechange = function () {
+	    if (request && request.readyState === 4) {
+	      // Prepare the response
+	      var headers = parseHeaders(request.getAllResponseHeaders());
+	      var response = {
+	        data: transformData(
+	          request.responseText,
+	          headers,
+	          config.transformResponse
+	        ),
+	        status: request.status,
+	        headers: headers,
+	        config: config
+	      };
+
+	      // Resolve or reject the Promise based on the status
+	      (request.status >= 200 && request.status < 300
+	        ? resolve
+	        : reject)(response);
+
+	      // Clean up request
+	      request = null;
+	    }
+	  };
+
+	  // Add xsrf header
+	  var xsrfValue = urlIsSameOrigin(config.url)
+	    ? cookies.read(config.xsrfCookieName || defaults.xsrfCookieName)
+	    : undefined;
+	  if (xsrfValue) {
+	    headers[config.xsrfHeaderName || defaults.xsrfHeaderName] = xsrfValue;
+	  }
+
+	  // Add headers to the request
+	  utils.forEach(headers, function (val, key) {
+	    // Remove Content-Type if data is undefined
+	    if (!data && key.toLowerCase() === 'content-type') {
+	      delete headers[key];
+	    }
+	    // Otherwise add header to the request
+	    else {
+	      request.setRequestHeader(key, val);
+	    }
+	  });
+
+	  // Add withCredentials to request if needed
+	  if (config.withCredentials) {
+	    request.withCredentials = true;
+	  }
+
+	  // Add responseType to request if needed
+	  if (config.responseType) {
+	    try {
+	      request.responseType = config.responseType;
+	    } catch (e) {
+	      if (request.responseType !== 'json') {
+	        throw e;
+	      }
+	    }
+	  }
+
+	  // Send the request
+	  request.send(data);
+	};
+
+/***/ },
+/* 109 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -15095,60 +14683,10 @@
 
 	module.exports = emptyObject;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 116 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule joinClasses
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	/**
-	 * Combines multiple className strings into one.
-	 * http://jsperf.com/joinclasses-args-vs-array
-	 *
-	 * @param {...?string} classes
-	 * @return {string}
-	 */
-	function joinClasses(className/*, ... */) {
-	  if (!className) {
-	    className = '';
-	  }
-	  var nextClass;
-	  var argLength = arguments.length;
-	  if (argLength > 1) {
-	    for (var ii = 1; ii < argLength; ii++) {
-	      nextClass = arguments[ii];
-	      nextClass && (className += ' ' + nextClass);
-	    }
-	  }
-	  return className;
-	}
-
-	module.exports = joinClasses;
-
-
-/***/ },
-/* 117 */
+/* 110 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -15171,10 +14709,10 @@
 
 	"use strict";
 
-	var PooledClass = __webpack_require__(69);
+	var PooledClass = __webpack_require__(53);
 
-	var invariant = __webpack_require__(54);
-	var mixInto = __webpack_require__(65);
+	var invariant = __webpack_require__(48);
+	var mixInto = __webpack_require__(63);
 
 	/**
 	 * A specialized pseudo-event module to help keep track of components waiting to
@@ -15255,10 +14793,10 @@
 
 	module.exports = CallbackQueue;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 118 */
+/* 111 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -15281,7 +14819,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * `Transaction` creates a black box that is able to wrap any method such that
@@ -15506,10 +15044,60 @@
 
 	module.exports = Transaction;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 119 */
+/* 112 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule joinClasses
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	/**
+	 * Combines multiple className strings into one.
+	 * http://jsperf.com/joinclasses-args-vs-array
+	 *
+	 * @param {...?string} classes
+	 * @return {string}
+	 */
+	function joinClasses(className/*, ... */) {
+	  if (!className) {
+	    className = '';
+	  }
+	  var nextClass;
+	  var argLength = arguments.length;
+	  if (argLength > 1) {
+	    for (var ii = 1; ii < argLength; ii++) {
+	      nextClass = arguments[ii];
+	      nextClass && (className += ' ' + nextClass);
+	    }
+	  }
+	  return className;
+	}
+
+	module.exports = joinClasses;
+
+
+/***/ },
+/* 113 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -15534,8 +15122,8 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
-	var keyMirror = __webpack_require__(64);
+	var invariant = __webpack_require__(48);
+	var keyMirror = __webpack_require__(51);
 
 	/**
 	 * Maximum number of levels to traverse. Will catch circular structures.
@@ -15660,10 +15248,218 @@
 
 	module.exports = mergeHelpers;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 120 */
+/* 114 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule EventPropagators
+	 */
+
+	"use strict";
+
+	var EventConstants = __webpack_require__(47);
+	var EventPluginHub = __webpack_require__(116);
+
+	var accumulate = __webpack_require__(161);
+	var forEachAccumulated = __webpack_require__(162);
+
+	var PropagationPhases = EventConstants.PropagationPhases;
+	var getListener = EventPluginHub.getListener;
+
+	/**
+	 * Some event types have a notion of different registration names for different
+	 * "phases" of propagation. This finds listeners by a given phase.
+	 */
+	function listenerAtPhase(id, event, propagationPhase) {
+	  var registrationName =
+	    event.dispatchConfig.phasedRegistrationNames[propagationPhase];
+	  return getListener(id, registrationName);
+	}
+
+	/**
+	 * Tags a `SyntheticEvent` with dispatched listeners. Creating this function
+	 * here, allows us to not have to bind or create functions for each event.
+	 * Mutating the event's members allows us to not have to create a wrapping
+	 * "dispatch" object that pairs the event with the listener.
+	 */
+	function accumulateDirectionalDispatches(domID, upwards, event) {
+	  if ("production" !== process.env.NODE_ENV) {
+	    if (!domID) {
+	      throw new Error('Dispatching id must not be null');
+	    }
+	  }
+	  var phase = upwards ? PropagationPhases.bubbled : PropagationPhases.captured;
+	  var listener = listenerAtPhase(domID, event, phase);
+	  if (listener) {
+	    event._dispatchListeners = accumulate(event._dispatchListeners, listener);
+	    event._dispatchIDs = accumulate(event._dispatchIDs, domID);
+	  }
+	}
+
+	/**
+	 * Collect dispatches (must be entirely collected before dispatching - see unit
+	 * tests). Lazily allocate the array to conserve memory.  We must loop through
+	 * each event and perform the traversal for each one. We can not perform a
+	 * single traversal for the entire collection of events because each event may
+	 * have a different target.
+	 */
+	function accumulateTwoPhaseDispatchesSingle(event) {
+	  if (event && event.dispatchConfig.phasedRegistrationNames) {
+	    EventPluginHub.injection.getInstanceHandle().traverseTwoPhase(
+	      event.dispatchMarker,
+	      accumulateDirectionalDispatches,
+	      event
+	    );
+	  }
+	}
+
+
+	/**
+	 * Accumulates without regard to direction, does not look for phased
+	 * registration names. Same as `accumulateDirectDispatchesSingle` but without
+	 * requiring that the `dispatchMarker` be the same as the dispatched ID.
+	 */
+	function accumulateDispatches(id, ignoredDirection, event) {
+	  if (event && event.dispatchConfig.registrationName) {
+	    var registrationName = event.dispatchConfig.registrationName;
+	    var listener = getListener(id, registrationName);
+	    if (listener) {
+	      event._dispatchListeners = accumulate(event._dispatchListeners, listener);
+	      event._dispatchIDs = accumulate(event._dispatchIDs, id);
+	    }
+	  }
+	}
+
+	/**
+	 * Accumulates dispatches on an `SyntheticEvent`, but only for the
+	 * `dispatchMarker`.
+	 * @param {SyntheticEvent} event
+	 */
+	function accumulateDirectDispatchesSingle(event) {
+	  if (event && event.dispatchConfig.registrationName) {
+	    accumulateDispatches(event.dispatchMarker, null, event);
+	  }
+	}
+
+	function accumulateTwoPhaseDispatches(events) {
+	  forEachAccumulated(events, accumulateTwoPhaseDispatchesSingle);
+	}
+
+	function accumulateEnterLeaveDispatches(leave, enter, fromID, toID) {
+	  EventPluginHub.injection.getInstanceHandle().traverseEnterLeave(
+	    fromID,
+	    toID,
+	    accumulateDispatches,
+	    leave,
+	    enter
+	  );
+	}
+
+
+	function accumulateDirectDispatches(events) {
+	  forEachAccumulated(events, accumulateDirectDispatchesSingle);
+	}
+
+
+
+	/**
+	 * A small set of propagation patterns, each of which will accept a small amount
+	 * of information, and generate a set of "dispatch ready event objects" - which
+	 * are sets of events that have already been annotated with a set of dispatched
+	 * listener functions/ids. The API is designed this way to discourage these
+	 * propagation strategies from actually executing the dispatches, since we
+	 * always want to collect the entire set of dispatches before executing event a
+	 * single one.
+	 *
+	 * @constructor EventPropagators
+	 */
+	var EventPropagators = {
+	  accumulateTwoPhaseDispatches: accumulateTwoPhaseDispatches,
+	  accumulateDirectDispatches: accumulateDirectDispatches,
+	  accumulateEnterLeaveDispatches: accumulateEnterLeaveDispatches
+	};
+
+	module.exports = EventPropagators;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 115 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule SyntheticInputEvent
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var SyntheticEvent = __webpack_require__(117);
+
+	/**
+	 * @interface Event
+	 * @see http://www.w3.org/TR/2013/WD-DOM-Level-3-Events-20131105
+	 *      /#events-inputevents
+	 */
+	var InputEventInterface = {
+	  data: null
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticUIEvent}
+	 */
+	function SyntheticInputEvent(
+	  dispatchConfig,
+	  dispatchMarker,
+	  nativeEvent) {
+	  SyntheticEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
+	}
+
+	SyntheticEvent.augmentClass(
+	  SyntheticInputEvent,
+	  InputEventInterface
+	);
+
+	module.exports = SyntheticInputEvent;
+
+
+
+/***/ },
+/* 116 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -15686,14 +15482,14 @@
 
 	"use strict";
 
-	var EventPluginRegistry = __webpack_require__(152);
-	var EventPluginUtils = __webpack_require__(23);
+	var EventPluginRegistry = __webpack_require__(147);
+	var EventPluginUtils = __webpack_require__(22);
 
 	var accumulate = __webpack_require__(161);
 	var forEachAccumulated = __webpack_require__(162);
-	var invariant = __webpack_require__(54);
-	var isEventSupported = __webpack_require__(123);
-	var monitorCodeUse = __webpack_require__(66);
+	var invariant = __webpack_require__(48);
+	var isEventSupported = __webpack_require__(118);
+	var monitorCodeUse = __webpack_require__(64);
 
 	/**
 	 * Internal store for event listeners
@@ -15957,160 +15753,10 @@
 
 	module.exports = EventPluginHub;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 121 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule EventPropagators
-	 */
-
-	"use strict";
-
-	var EventConstants = __webpack_require__(53);
-	var EventPluginHub = __webpack_require__(120);
-
-	var accumulate = __webpack_require__(161);
-	var forEachAccumulated = __webpack_require__(162);
-
-	var PropagationPhases = EventConstants.PropagationPhases;
-	var getListener = EventPluginHub.getListener;
-
-	/**
-	 * Some event types have a notion of different registration names for different
-	 * "phases" of propagation. This finds listeners by a given phase.
-	 */
-	function listenerAtPhase(id, event, propagationPhase) {
-	  var registrationName =
-	    event.dispatchConfig.phasedRegistrationNames[propagationPhase];
-	  return getListener(id, registrationName);
-	}
-
-	/**
-	 * Tags a `SyntheticEvent` with dispatched listeners. Creating this function
-	 * here, allows us to not have to bind or create functions for each event.
-	 * Mutating the event's members allows us to not have to create a wrapping
-	 * "dispatch" object that pairs the event with the listener.
-	 */
-	function accumulateDirectionalDispatches(domID, upwards, event) {
-	  if ("production" !== process.env.NODE_ENV) {
-	    if (!domID) {
-	      throw new Error('Dispatching id must not be null');
-	    }
-	  }
-	  var phase = upwards ? PropagationPhases.bubbled : PropagationPhases.captured;
-	  var listener = listenerAtPhase(domID, event, phase);
-	  if (listener) {
-	    event._dispatchListeners = accumulate(event._dispatchListeners, listener);
-	    event._dispatchIDs = accumulate(event._dispatchIDs, domID);
-	  }
-	}
-
-	/**
-	 * Collect dispatches (must be entirely collected before dispatching - see unit
-	 * tests). Lazily allocate the array to conserve memory.  We must loop through
-	 * each event and perform the traversal for each one. We can not perform a
-	 * single traversal for the entire collection of events because each event may
-	 * have a different target.
-	 */
-	function accumulateTwoPhaseDispatchesSingle(event) {
-	  if (event && event.dispatchConfig.phasedRegistrationNames) {
-	    EventPluginHub.injection.getInstanceHandle().traverseTwoPhase(
-	      event.dispatchMarker,
-	      accumulateDirectionalDispatches,
-	      event
-	    );
-	  }
-	}
-
-
-	/**
-	 * Accumulates without regard to direction, does not look for phased
-	 * registration names. Same as `accumulateDirectDispatchesSingle` but without
-	 * requiring that the `dispatchMarker` be the same as the dispatched ID.
-	 */
-	function accumulateDispatches(id, ignoredDirection, event) {
-	  if (event && event.dispatchConfig.registrationName) {
-	    var registrationName = event.dispatchConfig.registrationName;
-	    var listener = getListener(id, registrationName);
-	    if (listener) {
-	      event._dispatchListeners = accumulate(event._dispatchListeners, listener);
-	      event._dispatchIDs = accumulate(event._dispatchIDs, id);
-	    }
-	  }
-	}
-
-	/**
-	 * Accumulates dispatches on an `SyntheticEvent`, but only for the
-	 * `dispatchMarker`.
-	 * @param {SyntheticEvent} event
-	 */
-	function accumulateDirectDispatchesSingle(event) {
-	  if (event && event.dispatchConfig.registrationName) {
-	    accumulateDispatches(event.dispatchMarker, null, event);
-	  }
-	}
-
-	function accumulateTwoPhaseDispatches(events) {
-	  forEachAccumulated(events, accumulateTwoPhaseDispatchesSingle);
-	}
-
-	function accumulateEnterLeaveDispatches(leave, enter, fromID, toID) {
-	  EventPluginHub.injection.getInstanceHandle().traverseEnterLeave(
-	    fromID,
-	    toID,
-	    accumulateDispatches,
-	    leave,
-	    enter
-	  );
-	}
-
-
-	function accumulateDirectDispatches(events) {
-	  forEachAccumulated(events, accumulateDirectDispatchesSingle);
-	}
-
-
-
-	/**
-	 * A small set of propagation patterns, each of which will accept a small amount
-	 * of information, and generate a set of "dispatch ready event objects" - which
-	 * are sets of events that have already been annotated with a set of dispatched
-	 * listener functions/ids. The API is designed this way to discourage these
-	 * propagation strategies from actually executing the dispatches, since we
-	 * always want to collect the entire set of dispatches before executing event a
-	 * single one.
-	 *
-	 * @constructor EventPropagators
-	 */
-	var EventPropagators = {
-	  accumulateTwoPhaseDispatches: accumulateTwoPhaseDispatches,
-	  accumulateDirectDispatches: accumulateDirectDispatches,
-	  accumulateEnterLeaveDispatches: accumulateEnterLeaveDispatches
-	};
-
-	module.exports = EventPropagators;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
-/* 122 */
+/* 117 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16134,12 +15780,12 @@
 
 	"use strict";
 
-	var PooledClass = __webpack_require__(69);
+	var PooledClass = __webpack_require__(53);
 
 	var emptyFunction = __webpack_require__(104);
-	var getEventTarget = __webpack_require__(136);
+	var getEventTarget = __webpack_require__(133);
 	var merge = __webpack_require__(52);
-	var mergeInto = __webpack_require__(71);
+	var mergeInto = __webpack_require__(67);
 
 	/**
 	 * @interface Event
@@ -16280,7 +15926,7 @@
 
 
 /***/ },
-/* 123 */
+/* 118 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16303,7 +15949,7 @@
 
 	"use strict";
 
-	var ExecutionEnvironment = __webpack_require__(42);
+	var ExecutionEnvironment = __webpack_require__(41);
 
 	var useHasFeature;
 	if (ExecutionEnvironment.canUseDOM) {
@@ -16356,7 +16002,7 @@
 
 
 /***/ },
-/* 124 */
+/* 119 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16411,7 +16057,7 @@
 
 
 /***/ },
-/* 125 */
+/* 120 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16436,9 +16082,9 @@
 
 	var ReactDOMSelection = __webpack_require__(163);
 
-	var containsNode = __webpack_require__(105);
+	var containsNode = __webpack_require__(98);
 	var focusNode = __webpack_require__(164);
-	var getActiveElement = __webpack_require__(138);
+	var getActiveElement = __webpack_require__(130);
 
 	function isInDocument(node) {
 	  return containsNode(document.documentElement, node);
@@ -16558,7 +16204,7 @@
 
 
 /***/ },
-/* 126 */
+/* 121 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16582,7 +16228,7 @@
 
 	"use strict";
 
-	var SyntheticEvent = __webpack_require__(122);
+	var SyntheticEvent = __webpack_require__(117);
 
 	/**
 	 * @interface Event
@@ -16615,7 +16261,7 @@
 
 
 /***/ },
-/* 127 */
+/* 122 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16638,7 +16284,7 @@
 
 	"use strict";
 
-	var ExecutionEnvironment = __webpack_require__(42);
+	var ExecutionEnvironment = __webpack_require__(41);
 
 	var contentKey = null;
 
@@ -16663,7 +16309,7 @@
 
 
 /***/ },
-/* 128 */
+/* 123 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16687,8 +16333,8 @@
 
 	"use strict";
 
-	var SyntheticUIEvent = __webpack_require__(147);
-	var ViewportMetrics = __webpack_require__(154);
+	var SyntheticUIEvent = __webpack_require__(140);
+	var ViewportMetrics = __webpack_require__(149);
 
 	var getEventModifierState = __webpack_require__(165);
 
@@ -16757,7 +16403,7 @@
 
 
 /***/ },
-/* 129 */
+/* 124 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -16795,7 +16441,7 @@
 
 
 /***/ },
-/* 130 */
+/* 125 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -16821,14 +16467,14 @@
 
 	"use strict";
 
-	var CSSPropertyOperations = __webpack_require__(101);
+	var CSSPropertyOperations = __webpack_require__(94);
 	var DOMChildrenOperations = __webpack_require__(166);
-	var DOMPropertyOperations = __webpack_require__(22);
-	var ReactMount = __webpack_require__(34);
-	var ReactPerf = __webpack_require__(36);
+	var DOMPropertyOperations = __webpack_require__(21);
+	var ReactMount = __webpack_require__(33);
+	var ReactPerf = __webpack_require__(35);
 
-	var invariant = __webpack_require__(54);
-	var setInnerHTML = __webpack_require__(132);
+	var invariant = __webpack_require__(48);
+	var setInnerHTML = __webpack_require__(127);
 
 	/**
 	 * Errors for properties that should not be updated with `updatePropertyById()`.
@@ -16988,10 +16634,10 @@
 
 	module.exports = ReactDOMIDOperations;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 131 */
+/* 126 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -17015,14 +16661,14 @@
 
 	"use strict";
 
-	var CallbackQueue = __webpack_require__(117);
-	var PooledClass = __webpack_require__(69);
-	var ReactBrowserEventEmitter = __webpack_require__(102);
-	var ReactInputSelection = __webpack_require__(125);
-	var ReactPutListenerQueue = __webpack_require__(159);
-	var Transaction = __webpack_require__(118);
+	var CallbackQueue = __webpack_require__(110);
+	var PooledClass = __webpack_require__(53);
+	var ReactBrowserEventEmitter = __webpack_require__(95);
+	var ReactInputSelection = __webpack_require__(120);
+	var ReactPutListenerQueue = __webpack_require__(153);
+	var Transaction = __webpack_require__(111);
 
-	var mixInto = __webpack_require__(65);
+	var mixInto = __webpack_require__(63);
 
 	/**
 	 * Ensures that, when possible, the selection range (currently selected text
@@ -17179,7 +16825,7 @@
 
 
 /***/ },
-/* 132 */
+/* 127 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -17202,7 +16848,7 @@
 
 	"use strict";
 
-	var ExecutionEnvironment = __webpack_require__(42);
+	var ExecutionEnvironment = __webpack_require__(41);
 
 	/**
 	 * Set the innerHTML property of a node, ensuring that whitespace is preserved
@@ -17270,7 +16916,7 @@
 
 
 /***/ },
-/* 133 */
+/* 128 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -17293,11 +16939,11 @@
 
 	"use strict";
 
-	var ReactBrowserEventEmitter = __webpack_require__(102);
+	var ReactBrowserEventEmitter = __webpack_require__(95);
 
 	var accumulate = __webpack_require__(161);
 	var forEachAccumulated = __webpack_require__(162);
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	function remove(event) {
 	  event.remove();
@@ -17326,10 +16972,10 @@
 
 	module.exports = LocalEventTrapMixin;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 134 */
+/* 129 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -17353,9 +16999,9 @@
 
 	"use strict";
 
-	var ReactPropTypes = __webpack_require__(37);
+	var ReactPropTypes = __webpack_require__(36);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	var hasReadOnlyValue = {
 	  'button': true,
@@ -17492,10 +17138,105 @@
 
 	module.exports = LinkedValueUtils;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 135 */
+/* 130 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule getActiveElement
+	 * @typechecks
+	 */
+
+	/**
+	 * Same as document.activeElement but wraps in a try-catch block. In IE it is
+	 * not safe to call document.activeElement if there is nothing focused.
+	 *
+	 * The activeElement will be null only if the document body is not yet defined.
+	 */
+	function getActiveElement() /*?DOMElement*/ {
+	  try {
+	    return document.activeElement || document.body;
+	  } catch (e) {
+	    return document.body;
+	  }
+	}
+
+	module.exports = getActiveElement;
+
+
+/***/ },
+/* 131 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule shallowEqual
+	 */
+
+	"use strict";
+
+	/**
+	 * Performs equality by iterating through keys on an object and returning
+	 * false when any key has values which are not strictly equal between
+	 * objA and objB. Returns true when the values of all keys are strictly equal.
+	 *
+	 * @return {boolean}
+	 */
+	function shallowEqual(objA, objB) {
+	  if (objA === objB) {
+	    return true;
+	  }
+	  var key;
+	  // Test for A's keys different from B.
+	  for (key in objA) {
+	    if (objA.hasOwnProperty(key) &&
+	        (!objB.hasOwnProperty(key) || objA[key] !== objB[key])) {
+	      return false;
+	    }
+	  }
+	  // Test for B'a keys missing from A.
+	  for (key in objB) {
+	    if (objB.hasOwnProperty(key) && !objA.hasOwnProperty(key)) {
+	      return false;
+	    }
+	  }
+	  return true;
+	}
+
+	module.exports = shallowEqual;
+
+
+/***/ },
+/* 132 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -17571,10 +17312,10 @@
 
 	module.exports = EventListener;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 136 */
+/* 133 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -17616,7 +17357,7 @@
 
 
 /***/ },
-/* 137 */
+/* 134 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -17667,6 +17408,206 @@
 
 
 /***/ },
+/* 135 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule SyntheticClipboardEvent
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var SyntheticEvent = __webpack_require__(117);
+
+	/**
+	 * @interface Event
+	 * @see http://www.w3.org/TR/clipboard-apis/
+	 */
+	var ClipboardEventInterface = {
+	  clipboardData: function(event) {
+	    return (
+	      'clipboardData' in event ?
+	        event.clipboardData :
+	        window.clipboardData
+	    );
+	  }
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticUIEvent}
+	 */
+	function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
+	}
+
+	SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
+
+	module.exports = SyntheticClipboardEvent;
+
+
+
+/***/ },
+/* 136 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule SyntheticFocusEvent
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var SyntheticUIEvent = __webpack_require__(140);
+
+	/**
+	 * @interface FocusEvent
+	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
+	 */
+	var FocusEventInterface = {
+	  relatedTarget: null
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticUIEvent}
+	 */
+	function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticUIEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
+	}
+
+	SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
+
+	module.exports = SyntheticFocusEvent;
+
+
+/***/ },
+/* 137 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule SyntheticKeyboardEvent
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var SyntheticUIEvent = __webpack_require__(140);
+
+	var getEventKey = __webpack_require__(167);
+	var getEventModifierState = __webpack_require__(165);
+
+	/**
+	 * @interface KeyboardEvent
+	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
+	 */
+	var KeyboardEventInterface = {
+	  key: getEventKey,
+	  location: null,
+	  ctrlKey: null,
+	  shiftKey: null,
+	  altKey: null,
+	  metaKey: null,
+	  repeat: null,
+	  locale: null,
+	  getModifierState: getEventModifierState,
+	  // Legacy Interface
+	  charCode: function(event) {
+	    // `charCode` is the result of a KeyPress event and represents the value of
+	    // the actual printable character.
+
+	    // KeyPress is deprecated but its replacement is not yet final and not
+	    // implemented in any major browser.
+	    if (event.type === 'keypress') {
+	      // IE8 does not implement "charCode", but "keyCode" has the correct value.
+	      return 'charCode' in event ? event.charCode : event.keyCode;
+	    }
+	    return 0;
+	  },
+	  keyCode: function(event) {
+	    // `keyCode` is the result of a KeyDown/Up event and represents the value of
+	    // physical keyboard key.
+
+	    // The actual meaning of the value depends on the users' keyboard layout
+	    // which cannot be detected. Assuming that it is a US keyboard layout
+	    // provides a surprisingly accurate mapping for US and European users.
+	    // Due to this, it is left to the user to implement at this time.
+	    if (event.type === 'keydown' || event.type === 'keyup') {
+	      return event.keyCode;
+	    }
+	    return 0;
+	  },
+	  which: function(event) {
+	    // `which` is an alias for either `keyCode` or `charCode` depending on the
+	    // type of the event. There is no need to determine the type of the event
+	    // as `keyCode` and `charCode` are either aliased or default to zero.
+	    return event.keyCode || event.charCode;
+	  }
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticUIEvent}
+	 */
+	function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticUIEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
+	}
+
+	SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
+
+	module.exports = SyntheticKeyboardEvent;
+
+
+/***/ },
 /* 138 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -17685,25 +17626,35 @@
 	 * See the License for the specific language governing permissions and
 	 * limitations under the License.
 	 *
-	 * @providesModule getActiveElement
-	 * @typechecks
+	 * @providesModule SyntheticDragEvent
+	 * @typechecks static-only
 	 */
+
+	"use strict";
+
+	var SyntheticMouseEvent = __webpack_require__(123);
 
 	/**
-	 * Same as document.activeElement but wraps in a try-catch block. In IE it is
-	 * not safe to call document.activeElement if there is nothing focused.
-	 *
-	 * The activeElement will be null only if the document body is not yet defined.
+	 * @interface DragEvent
+	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
 	 */
-	function getActiveElement() /*?DOMElement*/ {
-	  try {
-	    return document.activeElement || document.body;
-	  } catch (e) {
-	    return document.body;
-	  }
+	var DragEventInterface = {
+	  dataTransfer: null
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticUIEvent}
+	 */
+	function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticMouseEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
 	}
 
-	module.exports = getActiveElement;
+	SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
+
+	module.exports = SyntheticDragEvent;
 
 
 /***/ },
@@ -17725,44 +17676,193 @@
 	 * See the License for the specific language governing permissions and
 	 * limitations under the License.
 	 *
-	 * @providesModule shallowEqual
+	 * @providesModule SyntheticTouchEvent
+	 * @typechecks static-only
 	 */
 
 	"use strict";
 
+	var SyntheticUIEvent = __webpack_require__(140);
+
+	var getEventModifierState = __webpack_require__(165);
+
 	/**
-	 * Performs equality by iterating through keys on an object and returning
-	 * false when any key has values which are not strictly equal between
-	 * objA and objB. Returns true when the values of all keys are strictly equal.
-	 *
-	 * @return {boolean}
+	 * @interface TouchEvent
+	 * @see http://www.w3.org/TR/touch-events/
 	 */
-	function shallowEqual(objA, objB) {
-	  if (objA === objB) {
-	    return true;
-	  }
-	  var key;
-	  // Test for A's keys different from B.
-	  for (key in objA) {
-	    if (objA.hasOwnProperty(key) &&
-	        (!objB.hasOwnProperty(key) || objA[key] !== objB[key])) {
-	      return false;
-	    }
-	  }
-	  // Test for B'a keys missing from A.
-	  for (key in objB) {
-	    if (objB.hasOwnProperty(key) && !objA.hasOwnProperty(key)) {
-	      return false;
-	    }
-	  }
-	  return true;
+	var TouchEventInterface = {
+	  touches: null,
+	  targetTouches: null,
+	  changedTouches: null,
+	  altKey: null,
+	  metaKey: null,
+	  ctrlKey: null,
+	  shiftKey: null,
+	  getModifierState: getEventModifierState
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticUIEvent}
+	 */
+	function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticUIEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
 	}
 
-	module.exports = shallowEqual;
+	SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
+
+	module.exports = SyntheticTouchEvent;
 
 
 /***/ },
 /* 140 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule SyntheticUIEvent
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var SyntheticEvent = __webpack_require__(117);
+
+	var getEventTarget = __webpack_require__(133);
+
+	/**
+	 * @interface UIEvent
+	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
+	 */
+	var UIEventInterface = {
+	  view: function(event) {
+	    if (event.view) {
+	      return event.view;
+	    }
+
+	    var target = getEventTarget(event);
+	    if (target != null && target.window === target) {
+	      // target is a window object
+	      return target;
+	    }
+
+	    var doc = target.ownerDocument;
+	    // TODO: Figure out why `ownerDocument` is sometimes undefined in IE8.
+	    if (doc) {
+	      return doc.defaultView || doc.parentWindow;
+	    } else {
+	      return window;
+	    }
+	  },
+	  detail: function(event) {
+	    return event.detail || 0;
+	  }
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticEvent}
+	 */
+	function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
+	}
+
+	SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
+
+	module.exports = SyntheticUIEvent;
+
+
+/***/ },
+/* 141 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule SyntheticWheelEvent
+	 * @typechecks static-only
+	 */
+
+	"use strict";
+
+	var SyntheticMouseEvent = __webpack_require__(123);
+
+	/**
+	 * @interface WheelEvent
+	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
+	 */
+	var WheelEventInterface = {
+	  deltaX: function(event) {
+	    return (
+	      'deltaX' in event ? event.deltaX :
+	      // Fallback to `wheelDeltaX` for Webkit and normalize (right is positive).
+	      'wheelDeltaX' in event ? -event.wheelDeltaX : 0
+	    );
+	  },
+	  deltaY: function(event) {
+	    return (
+	      'deltaY' in event ? event.deltaY :
+	      // Fallback to `wheelDeltaY` for Webkit and normalize (down is positive).
+	      'wheelDeltaY' in event ? -event.wheelDeltaY :
+	      // Fallback to `wheelDelta` for IE<9 and normalize (down is positive).
+	      'wheelDelta' in event ? -event.wheelDelta : 0
+	    );
+	  },
+	  deltaZ: null,
+
+	  // Browsers without "deltaMode" is reporting in raw wheel delta where one
+	  // notch on the scroll is always +/- 120, roughly equivalent to pixels.
+	  // A good approximation of DOM_DELTA_LINE (1) is 5% of viewport size or
+	  // ~40 pixels, for DOM_DELTA_SCREEN (2) it is 87.5% of viewport size.
+	  deltaMode: null
+	};
+
+	/**
+	 * @param {object} dispatchConfig Configuration used to dispatch this event.
+	 * @param {string} dispatchMarker Marker identifying the event target.
+	 * @param {object} nativeEvent Native browser event.
+	 * @extends {SyntheticMouseEvent}
+	 */
+	function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent) {
+	  SyntheticMouseEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
+	}
+
+	SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
+
+	module.exports = SyntheticWheelEvent;
+
+
+/***/ },
+/* 142 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -17971,7 +18071,7 @@
 
 
 /***/ },
-/* 141 */
+/* 143 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -17993,7 +18093,7 @@
 	 * @typechecks
 	 */
 
-	var performance = __webpack_require__(167);
+	var performance = __webpack_require__(168);
 
 	/**
 	 * Detect if we can use `window.performance.now()` and gracefully fallback to
@@ -18010,461 +18110,7 @@
 
 
 /***/ },
-/* 142 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticClipboardEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticEvent = __webpack_require__(122);
-
-	/**
-	 * @interface Event
-	 * @see http://www.w3.org/TR/clipboard-apis/
-	 */
-	var ClipboardEventInterface = {
-	  clipboardData: function(event) {
-	    return (
-	      'clipboardData' in event ?
-	        event.clipboardData :
-	        window.clipboardData
-	    );
-	  }
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticUIEvent}
-	 */
-	function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
-
-	module.exports = SyntheticClipboardEvent;
-
-
-
-/***/ },
-/* 143 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticFocusEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticUIEvent = __webpack_require__(147);
-
-	/**
-	 * @interface FocusEvent
-	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
-	 */
-	var FocusEventInterface = {
-	  relatedTarget: null
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticUIEvent}
-	 */
-	function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticUIEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
-
-	module.exports = SyntheticFocusEvent;
-
-
-/***/ },
 /* 144 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticKeyboardEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticUIEvent = __webpack_require__(147);
-
-	var getEventKey = __webpack_require__(168);
-	var getEventModifierState = __webpack_require__(165);
-
-	/**
-	 * @interface KeyboardEvent
-	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
-	 */
-	var KeyboardEventInterface = {
-	  key: getEventKey,
-	  location: null,
-	  ctrlKey: null,
-	  shiftKey: null,
-	  altKey: null,
-	  metaKey: null,
-	  repeat: null,
-	  locale: null,
-	  getModifierState: getEventModifierState,
-	  // Legacy Interface
-	  charCode: function(event) {
-	    // `charCode` is the result of a KeyPress event and represents the value of
-	    // the actual printable character.
-
-	    // KeyPress is deprecated but its replacement is not yet final and not
-	    // implemented in any major browser.
-	    if (event.type === 'keypress') {
-	      // IE8 does not implement "charCode", but "keyCode" has the correct value.
-	      return 'charCode' in event ? event.charCode : event.keyCode;
-	    }
-	    return 0;
-	  },
-	  keyCode: function(event) {
-	    // `keyCode` is the result of a KeyDown/Up event and represents the value of
-	    // physical keyboard key.
-
-	    // The actual meaning of the value depends on the users' keyboard layout
-	    // which cannot be detected. Assuming that it is a US keyboard layout
-	    // provides a surprisingly accurate mapping for US and European users.
-	    // Due to this, it is left to the user to implement at this time.
-	    if (event.type === 'keydown' || event.type === 'keyup') {
-	      return event.keyCode;
-	    }
-	    return 0;
-	  },
-	  which: function(event) {
-	    // `which` is an alias for either `keyCode` or `charCode` depending on the
-	    // type of the event. There is no need to determine the type of the event
-	    // as `keyCode` and `charCode` are either aliased or default to zero.
-	    return event.keyCode || event.charCode;
-	  }
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticUIEvent}
-	 */
-	function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticUIEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
-
-	module.exports = SyntheticKeyboardEvent;
-
-
-/***/ },
-/* 145 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticDragEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticMouseEvent = __webpack_require__(128);
-
-	/**
-	 * @interface DragEvent
-	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
-	 */
-	var DragEventInterface = {
-	  dataTransfer: null
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticUIEvent}
-	 */
-	function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticMouseEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
-
-	module.exports = SyntheticDragEvent;
-
-
-/***/ },
-/* 146 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticTouchEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticUIEvent = __webpack_require__(147);
-
-	var getEventModifierState = __webpack_require__(165);
-
-	/**
-	 * @interface TouchEvent
-	 * @see http://www.w3.org/TR/touch-events/
-	 */
-	var TouchEventInterface = {
-	  touches: null,
-	  targetTouches: null,
-	  changedTouches: null,
-	  altKey: null,
-	  metaKey: null,
-	  ctrlKey: null,
-	  shiftKey: null,
-	  getModifierState: getEventModifierState
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticUIEvent}
-	 */
-	function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticUIEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
-
-	module.exports = SyntheticTouchEvent;
-
-
-/***/ },
-/* 147 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticUIEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticEvent = __webpack_require__(122);
-
-	var getEventTarget = __webpack_require__(136);
-
-	/**
-	 * @interface UIEvent
-	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
-	 */
-	var UIEventInterface = {
-	  view: function(event) {
-	    if (event.view) {
-	      return event.view;
-	    }
-
-	    var target = getEventTarget(event);
-	    if (target != null && target.window === target) {
-	      // target is a window object
-	      return target;
-	    }
-
-	    var doc = target.ownerDocument;
-	    // TODO: Figure out why `ownerDocument` is sometimes undefined in IE8.
-	    if (doc) {
-	      return doc.defaultView || doc.parentWindow;
-	    } else {
-	      return window;
-	    }
-	  },
-	  detail: function(event) {
-	    return event.detail || 0;
-	  }
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticEvent}
-	 */
-	function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
-
-	module.exports = SyntheticUIEvent;
-
-
-/***/ },
-/* 148 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticWheelEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticMouseEvent = __webpack_require__(128);
-
-	/**
-	 * @interface WheelEvent
-	 * @see http://www.w3.org/TR/DOM-Level-3-Events/
-	 */
-	var WheelEventInterface = {
-	  deltaX: function(event) {
-	    return (
-	      'deltaX' in event ? event.deltaX :
-	      // Fallback to `wheelDeltaX` for Webkit and normalize (right is positive).
-	      'wheelDeltaX' in event ? -event.wheelDeltaX : 0
-	    );
-	  },
-	  deltaY: function(event) {
-	    return (
-	      'deltaY' in event ? event.deltaY :
-	      // Fallback to `wheelDeltaY` for Webkit and normalize (down is positive).
-	      'wheelDeltaY' in event ? -event.wheelDeltaY :
-	      // Fallback to `wheelDelta` for IE<9 and normalize (down is positive).
-	      'wheelDelta' in event ? -event.wheelDelta : 0
-	    );
-	  },
-	  deltaZ: null,
-
-	  // Browsers without "deltaMode" is reporting in raw wheel delta where one
-	  // notch on the scroll is always +/- 120, roughly equivalent to pixels.
-	  // A good approximation of DOM_DELTA_LINE (1) is 5% of viewport size or
-	  // ~40 pixels, for DOM_DELTA_SCREEN (2) it is 87.5% of viewport size.
-	  deltaMode: null
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticMouseEvent}
-	 */
-	function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent) {
-	  SyntheticMouseEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
-
-	module.exports = SyntheticWheelEvent;
-
-
-/***/ },
-/* 149 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -18591,7 +18237,7 @@
 
 
 /***/ },
-/* 150 */
+/* 145 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -18615,7 +18261,7 @@
 
 	"use strict";
 
-	var CSSProperty = __webpack_require__(149);
+	var CSSProperty = __webpack_require__(144);
 
 	var isUnitlessNumber = CSSProperty.isUnitlessNumber;
 
@@ -18660,7 +18306,7 @@
 
 
 /***/ },
-/* 151 */
+/* 146 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -18712,7 +18358,7 @@
 
 
 /***/ },
-/* 152 */
+/* 147 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -18736,7 +18382,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Injectable ordering of event plugins.
@@ -18999,10 +18645,10 @@
 
 	module.exports = EventPluginRegistry;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 153 */
+/* 148 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -19025,7 +18671,7 @@
 
 	"use strict";
 
-	var EventPluginHub = __webpack_require__(120);
+	var EventPluginHub = __webpack_require__(116);
 
 	function runEventQueueInBatch(events) {
 	  EventPluginHub.enqueueEvents(events);
@@ -19063,7 +18709,7 @@
 
 
 /***/ },
-/* 154 */
+/* 149 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -19086,7 +18732,7 @@
 
 	"use strict";
 
-	var getUnboundedScrollPosition = __webpack_require__(137);
+	var getUnboundedScrollPosition = __webpack_require__(134);
 
 	var ViewportMetrics = {
 
@@ -19106,7 +18752,88 @@
 
 
 /***/ },
-/* 155 */
+/* 150 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule isTextNode
+	 * @typechecks
+	 */
+
+	var isNode = __webpack_require__(170);
+
+	/**
+	 * @param {*} object The object to check.
+	 * @return {boolean} Whether or not the object is a DOM text node.
+	 */
+	function isTextNode(object) {
+	  return isNode(object) && object.nodeType == 3;
+	}
+
+	module.exports = isTextNode;
+
+
+/***/ },
+/* 151 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule adler32
+	 */
+
+	/* jslint bitwise:true */
+
+	"use strict";
+
+	var MOD = 65521;
+
+	// This is a clean-room implementation of adler32 designed for detecting
+	// if markup is not what we expect it to be. It does not need to be
+	// cryptographically strong, only reasonable good at detecting if markup
+	// generated on the server is different than that on the client.
+	function adler32(data) {
+	  var a = 1;
+	  var b = 0;
+	  for (var i = 0; i < data.length; i++) {
+	    a = (a + data.charCodeAt(i)) % MOD;
+	    b = (b + a) % MOD;
+	  }
+	  return a | (b << 16);
+	}
+
+	module.exports = adler32;
+
+
+/***/ },
+/* 152 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -19164,149 +18891,10 @@
 
 	module.exports = copyProperties;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 156 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule SyntheticInputEvent
-	 * @typechecks static-only
-	 */
-
-	"use strict";
-
-	var SyntheticEvent = __webpack_require__(122);
-
-	/**
-	 * @interface Event
-	 * @see http://www.w3.org/TR/2013/WD-DOM-Level-3-Events-20131105
-	 *      /#events-inputevents
-	 */
-	var InputEventInterface = {
-	  data: null
-	};
-
-	/**
-	 * @param {object} dispatchConfig Configuration used to dispatch this event.
-	 * @param {string} dispatchMarker Marker identifying the event target.
-	 * @param {object} nativeEvent Native browser event.
-	 * @extends {SyntheticUIEvent}
-	 */
-	function SyntheticInputEvent(
-	  dispatchConfig,
-	  dispatchMarker,
-	  nativeEvent) {
-	  SyntheticEvent.call(this, dispatchConfig, dispatchMarker, nativeEvent);
-	}
-
-	SyntheticEvent.augmentClass(
-	  SyntheticInputEvent,
-	  InputEventInterface
-	);
-
-	module.exports = SyntheticInputEvent;
-
-
-
-/***/ },
-/* 157 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule isTextNode
-	 * @typechecks
-	 */
-
-	var isNode = __webpack_require__(170);
-
-	/**
-	 * @param {*} object The object to check.
-	 * @return {boolean} Whether or not the object is a DOM text node.
-	 */
-	function isTextNode(object) {
-	  return isNode(object) && object.nodeType == 3;
-	}
-
-	module.exports = isTextNode;
-
-
-/***/ },
-/* 158 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule adler32
-	 */
-
-	/* jslint bitwise:true */
-
-	"use strict";
-
-	var MOD = 65521;
-
-	// This is a clean-room implementation of adler32 designed for detecting
-	// if markup is not what we expect it to be. It does not need to be
-	// cryptographically strong, only reasonable good at detecting if markup
-	// generated on the server is different than that on the client.
-	function adler32(data) {
-	  var a = 1;
-	  var b = 0;
-	  for (var i = 0; i < data.length; i++) {
-	    a = (a + data.charCodeAt(i)) % MOD;
-	    b = (b + a) % MOD;
-	  }
-	  return a | (b << 16);
-	}
-
-	module.exports = adler32;
-
-
-/***/ },
-/* 159 */
+/* 153 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -19329,10 +18917,10 @@
 
 	"use strict";
 
-	var PooledClass = __webpack_require__(69);
-	var ReactBrowserEventEmitter = __webpack_require__(102);
+	var PooledClass = __webpack_require__(53);
+	var ReactBrowserEventEmitter = __webpack_require__(95);
 
-	var mixInto = __webpack_require__(65);
+	var mixInto = __webpack_require__(63);
 
 	function ReactPutListenerQueue() {
 	  this.listenersToPut = [];
@@ -19373,12 +18961,425 @@
 
 
 /***/ },
+/* 154 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	/**
+	 * This is the common logic for both the Node.js and web browser
+	 * implementations of `debug()`.
+	 *
+	 * Expose `debug()` as the module.
+	 */
+
+	exports = module.exports = debug;
+	exports.coerce = coerce;
+	exports.disable = disable;
+	exports.enable = enable;
+	exports.enabled = enabled;
+	exports.humanize = __webpack_require__(175);
+
+	/**
+	 * The currently active debug mode names, and names to skip.
+	 */
+
+	exports.names = [];
+	exports.skips = [];
+
+	/**
+	 * Map of special "%n" handling functions, for the debug "format" argument.
+	 *
+	 * Valid key names are a single, lowercased letter, i.e. "n".
+	 */
+
+	exports.formatters = {};
+
+	/**
+	 * Previously assigned color.
+	 */
+
+	var prevColor = 0;
+
+	/**
+	 * Previous log timestamp.
+	 */
+
+	var prevTime;
+
+	/**
+	 * Select a color.
+	 *
+	 * @return {Number}
+	 * @api private
+	 */
+
+	function selectColor() {
+	  return exports.colors[prevColor++ % exports.colors.length];
+	}
+
+	/**
+	 * Create a debugger with the given `namespace`.
+	 *
+	 * @param {String} namespace
+	 * @return {Function}
+	 * @api public
+	 */
+
+	function debug(namespace) {
+
+	  // define the `disabled` version
+	  function disabled() {
+	  }
+	  disabled.enabled = false;
+
+	  // define the `enabled` version
+	  function enabled() {
+
+	    var self = enabled;
+
+	    // set `diff` timestamp
+	    var curr = +new Date();
+	    var ms = curr - (prevTime || curr);
+	    self.diff = ms;
+	    self.prev = prevTime;
+	    self.curr = curr;
+	    prevTime = curr;
+
+	    // add the `color` if not set
+	    if (null == self.useColors) self.useColors = exports.useColors();
+	    if (null == self.color && self.useColors) self.color = selectColor();
+
+	    var args = Array.prototype.slice.call(arguments);
+
+	    args[0] = exports.coerce(args[0]);
+
+	    if ('string' !== typeof args[0]) {
+	      // anything else let's inspect with %o
+	      args = ['%o'].concat(args);
+	    }
+
+	    // apply any `formatters` transformations
+	    var index = 0;
+	    args[0] = args[0].replace(/%([a-z%])/g, function(match, format) {
+	      // if we encounter an escaped % then don't increase the array index
+	      if (match === '%%') return match;
+	      index++;
+	      var formatter = exports.formatters[format];
+	      if ('function' === typeof formatter) {
+	        var val = args[index];
+	        match = formatter.call(self, val);
+
+	        // now we need to remove `args[index]` since it's inlined in the `format`
+	        args.splice(index, 1);
+	        index--;
+	      }
+	      return match;
+	    });
+
+	    if ('function' === typeof exports.formatArgs) {
+	      args = exports.formatArgs.apply(self, args);
+	    }
+	    var logFn = enabled.log || exports.log || console.log.bind(console);
+	    logFn.apply(self, args);
+	  }
+	  enabled.enabled = true;
+
+	  var fn = exports.enabled(namespace) ? enabled : disabled;
+
+	  fn.namespace = namespace;
+
+	  return fn;
+	}
+
+	/**
+	 * Enables a debug mode by namespaces. This can include modes
+	 * separated by a colon and wildcards.
+	 *
+	 * @param {String} namespaces
+	 * @api public
+	 */
+
+	function enable(namespaces) {
+	  exports.save(namespaces);
+
+	  var split = (namespaces || '').split(/[\s,]+/);
+	  var len = split.length;
+
+	  for (var i = 0; i < len; i++) {
+	    if (!split[i]) continue; // ignore empty strings
+	    namespaces = split[i].replace(/\*/g, '.*?');
+	    if (namespaces[0] === '-') {
+	      exports.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+	    } else {
+	      exports.names.push(new RegExp('^' + namespaces + '$'));
+	    }
+	  }
+	}
+
+	/**
+	 * Disable debug output.
+	 *
+	 * @api public
+	 */
+
+	function disable() {
+	  exports.enable('');
+	}
+
+	/**
+	 * Returns true if the given mode name is enabled, false otherwise.
+	 *
+	 * @param {String} name
+	 * @return {Boolean}
+	 * @api public
+	 */
+
+	function enabled(name) {
+	  var i, len;
+	  for (i = 0, len = exports.skips.length; i < len; i++) {
+	    if (exports.skips[i].test(name)) {
+	      return false;
+	    }
+	  }
+	  for (i = 0, len = exports.names.length; i < len; i++) {
+	    if (exports.names[i].test(name)) {
+	      return true;
+	    }
+	  }
+	  return false;
+	}
+
+	/**
+	 * Coerce `val`.
+	 *
+	 * @param {Mixed} val
+	 * @return {Mixed}
+	 * @api private
+	 */
+
+	function coerce(val) {
+	  if (val instanceof Error) return val.stack || val.message;
+	  return val;
+	}
+
+
+/***/ },
+/* 155 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var utils = __webpack_require__(106);
+
+	function encode(val) {
+	  return encodeURIComponent(val).
+	    replace(/%40/gi, '@').
+	    replace(/%3A/gi, ':').
+	    replace(/%24/g, '$').
+	    replace(/%2C/gi, ',').
+	    replace(/%20/g, '+');
+	}
+
+	module.exports = function buildUrl(url, params) {
+	  if (!params) {
+	    return url;
+	  }
+
+	  var parts = [];
+
+	  utils.forEach(params, function (val, key) {
+	    if (val === null || typeof val === 'undefined') {
+	      return;
+	    }
+	    if (!utils.isArray(val)) {
+	      val = [val];
+	    }
+
+	    utils.forEach(val, function (v) {
+	      if (utils.isDate(v)) {
+	        v = v.toISOString();
+	      }
+	      else if (utils.isObject(v)) {
+	        v = JSON.stringify(v);
+	      }
+	      parts.push(encode(key) + '=' + encode(v));
+	    });
+	  });
+
+	  if (parts.length > 0) {
+	    url += (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+	  }
+
+	  return url;
+	};
+
+/***/ },
+/* 156 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var utils = __webpack_require__(106);
+
+	module.exports = {
+	  write: function write(name, value, expires, path, domain, secure) {
+	    var cookie = [];
+	    cookie.push(name + '=' + encodeURIComponent(value));
+
+	    if (utils.isNumber(expires)) {
+	      cookie.push('expires=' + new Date(expires).toGMTString());
+	    }
+
+	    if (utils.isString(path)) {
+	      cookie.push('path=' + path);
+	    }
+
+	    if (utils.isString(domain)) {
+	      cookie.push('domain=' + domain);
+	    }
+
+	    if (secure === true) {
+	      cookie.push('secure');
+	    }
+
+	    document.cookie = cookie.join('; ');
+	  },
+
+	  read: function read(name) {
+	    var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+	    return (match ? decodeURIComponent(match[3]) : null);
+	  },
+
+	  remove: function remove(name) {
+	    this.write(name, '', Date.now() - 86400000);
+	  }
+	};
+
+/***/ },
+/* 157 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var utils = __webpack_require__(106);
+
+	/**
+	 * Parse headers into an object
+	 *
+	 * ```
+	 * Date: Wed, 27 Aug 2014 08:58:49 GMT
+	 * Content-Type: application/json
+	 * Connection: keep-alive
+	 * Transfer-Encoding: chunked
+	 * ```
+	 *
+	 * @param {String} headers Headers needing to be parsed
+	 * @returns {Object} Headers parsed into an object
+	 */
+	module.exports = function parseHeaders(headers) {
+	  var parsed = {}, key, val, i;
+
+	  if (!headers) return parsed;
+
+	  utils.forEach(headers.split('\n'), function(line) {
+	    i = line.indexOf(':');
+	    key = utils.trim(line.substr(0, i)).toLowerCase();
+	    val = utils.trim(line.substr(i + 1));
+
+	    if (key) {
+	      parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
+	    }
+	  });
+
+	  return parsed;
+	};
+
+/***/ },
+/* 158 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var utils = __webpack_require__(106);
+
+	/**
+	 * Transform the data for a request or a response
+	 *
+	 * @param {Object|String} data The data to be transformed
+	 * @param {Array} headers The headers for the request or response
+	 * @param {Array|Function} fns A single function or Array of functions
+	 * @returns {*} The resulting transformed data
+	 */
+	module.exports = function transformData(data, headers, fns) {
+	  utils.forEach(fns, function (fn) {
+	    data = fn(data, headers);
+	  });
+
+	  return data;
+	};
+
+/***/ },
+/* 159 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var msie = /(msie|trident)/i.test(navigator.userAgent);
+	var utils = __webpack_require__(106);
+	var urlParsingNode = document.createElement('a');
+	var originUrl = urlResolve(window.location.href);
+
+	/**
+	 * Parse a URL to discover it's components
+	 *
+	 * @param {String} url The URL to be parsed
+	 * @returns {Object}
+	 */
+	function urlResolve(url) {
+	  var href = url;
+
+	  if (msie) {
+	    // IE needs attribute set twice to normalize properties
+	    urlParsingNode.setAttribute('href', href);
+	    href = urlParsingNode.href;
+	  }
+
+	  urlParsingNode.setAttribute('href', href);
+
+	  // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
+	  return {
+	    href: urlParsingNode.href,
+	    protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
+	    host: urlParsingNode.host,
+	    search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
+	    hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
+	    hostname: urlParsingNode.hostname,
+	    port: urlParsingNode.port,
+	    pathname: (urlParsingNode.pathname.charAt(0) === '/')
+	      ? urlParsingNode.pathname
+	      : '/' + urlParsingNode.pathname
+	  };
+	}
+
+	/**
+	 * Determine if a URL shares the same origin as the current location
+	 *
+	 * @param {String} requestUrl The URL to test
+	 * @returns {boolean} True if URL shares the same origin, otherwise false
+	 */
+	module.exports = function urlIsSameOrigin(requestUrl) {
+	  var parsed = (utils.isString(requestUrl)) ? urlResolve(requestUrl) : requestUrl;
+	  return (parsed.protocol === originUrl.protocol &&
+	        parsed.host === originUrl.host);
+	};
+
+/***/ },
 /* 160 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var Promise = __webpack_require__(171).Promise;
-	var polyfill = __webpack_require__(172).polyfill;
+	var Promise = __webpack_require__(173).Promise;
+	var polyfill = __webpack_require__(174).polyfill;
 	exports.Promise = Promise;
 	exports.polyfill = polyfill;
 
@@ -19406,7 +19407,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Accumulates items that must not be null or undefined.
@@ -19441,7 +19442,7 @@
 
 	module.exports = accumulate;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
 /* 162 */
@@ -19509,10 +19510,10 @@
 
 	"use strict";
 
-	var ExecutionEnvironment = __webpack_require__(42);
+	var ExecutionEnvironment = __webpack_require__(41);
 
-	var getNodeForCharacterOffset = __webpack_require__(174);
-	var getTextContentAccessor = __webpack_require__(127);
+	var getNodeForCharacterOffset = __webpack_require__(171);
+	var getTextContentAccessor = __webpack_require__(122);
 
 	/**
 	 * While `isCollapsed` is available on the Selection object and `collapsed`
@@ -19827,11 +19828,11 @@
 
 	"use strict";
 
-	var Danger = __webpack_require__(175);
-	var ReactMultiChildUpdateTypes = __webpack_require__(73);
+	var Danger = __webpack_require__(172);
+	var ReactMultiChildUpdateTypes = __webpack_require__(100);
 
-	var getTextContentAccessor = __webpack_require__(127);
-	var invariant = __webpack_require__(54);
+	var getTextContentAccessor = __webpack_require__(122);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * The DOM property to use when setting text content.
@@ -19985,49 +19986,10 @@
 
 	module.exports = DOMChildrenOperations;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
 /* 167 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule performance
-	 * @typechecks
-	 */
-
-	"use strict";
-
-	var ExecutionEnvironment = __webpack_require__(42);
-
-	var performance;
-
-	if (ExecutionEnvironment.canUseDOM) {
-	  performance =
-	    window.performance ||
-	    window.msPerformance ||
-	    window.webkitPerformance;
-	}
-
-	module.exports = performance || {};
-
-
-/***/ },
-/* 168 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -20051,7 +20013,7 @@
 
 	"use strict";
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Normalization of deprecated HTML5 `key` values
@@ -20146,7 +20108,46 @@
 
 	module.exports = getEventKey;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 168 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule performance
+	 * @typechecks
+	 */
+
+	"use strict";
+
+	var ExecutionEnvironment = __webpack_require__(41);
+
+	var performance;
+
+	if (ExecutionEnvironment.canUseDOM) {
+	  performance =
+	    window.performance ||
+	    window.msPerformance ||
+	    window.webkitPerformance;
+	}
+
+	module.exports = performance || {};
+
 
 /***/ },
 /* 169 */
@@ -20235,17 +20236,297 @@
 /* 171 */
 /***/ function(module, exports, __webpack_require__) {
 
+	/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule getNodeForCharacterOffset
+	 */
+
 	"use strict";
-	var config = __webpack_require__(176).config;
-	var configure = __webpack_require__(176).configure;
-	var objectOrFunction = __webpack_require__(177).objectOrFunction;
-	var isFunction = __webpack_require__(177).isFunction;
-	var now = __webpack_require__(177).now;
-	var all = __webpack_require__(178).all;
-	var race = __webpack_require__(179).race;
-	var staticResolve = __webpack_require__(180).resolve;
-	var staticReject = __webpack_require__(181).reject;
-	var asap = __webpack_require__(182).asap;
+
+	/**
+	 * Given any node return the first leaf node without children.
+	 *
+	 * @param {DOMElement|DOMTextNode} node
+	 * @return {DOMElement|DOMTextNode}
+	 */
+	function getLeafNode(node) {
+	  while (node && node.firstChild) {
+	    node = node.firstChild;
+	  }
+	  return node;
+	}
+
+	/**
+	 * Get the next sibling within a container. This will walk up the
+	 * DOM if a node's siblings have been exhausted.
+	 *
+	 * @param {DOMElement|DOMTextNode} node
+	 * @return {?DOMElement|DOMTextNode}
+	 */
+	function getSiblingNode(node) {
+	  while (node) {
+	    if (node.nextSibling) {
+	      return node.nextSibling;
+	    }
+	    node = node.parentNode;
+	  }
+	}
+
+	/**
+	 * Get object describing the nodes which contain characters at offset.
+	 *
+	 * @param {DOMElement|DOMTextNode} root
+	 * @param {number} offset
+	 * @return {?object}
+	 */
+	function getNodeForCharacterOffset(root, offset) {
+	  var node = getLeafNode(root);
+	  var nodeStart = 0;
+	  var nodeEnd = 0;
+
+	  while (node) {
+	    if (node.nodeType == 3) {
+	      nodeEnd = nodeStart + node.textContent.length;
+
+	      if (nodeStart <= offset && nodeEnd >= offset) {
+	        return {
+	          node: node,
+	          offset: offset - nodeStart
+	        };
+	      }
+
+	      nodeStart = nodeEnd;
+	    }
+
+	    node = getLeafNode(getSiblingNode(node));
+	  }
+	}
+
+	module.exports = getNodeForCharacterOffset;
+
+
+/***/ },
+/* 172 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2014 Facebook, Inc.
+	 *
+	 * Licensed under the Apache License, Version 2.0 (the "License");
+	 * you may not use this file except in compliance with the License.
+	 * You may obtain a copy of the License at
+	 *
+	 * http://www.apache.org/licenses/LICENSE-2.0
+	 *
+	 * Unless required by applicable law or agreed to in writing, software
+	 * distributed under the License is distributed on an "AS IS" BASIS,
+	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	 * See the License for the specific language governing permissions and
+	 * limitations under the License.
+	 *
+	 * @providesModule Danger
+	 * @typechecks static-only
+	 */
+
+	/*jslint evil: true, sub: true */
+
+	"use strict";
+
+	var ExecutionEnvironment = __webpack_require__(41);
+
+	var createNodesFromMarkup = __webpack_require__(176);
+	var emptyFunction = __webpack_require__(104);
+	var getMarkupWrap = __webpack_require__(177);
+	var invariant = __webpack_require__(48);
+
+	var OPEN_TAG_NAME_EXP = /^(<[^ \/>]+)/;
+	var RESULT_INDEX_ATTR = 'data-danger-index';
+
+	/**
+	 * Extracts the `nodeName` from a string of markup.
+	 *
+	 * NOTE: Extracting the `nodeName` does not require a regular expression match
+	 * because we make assumptions about React-generated markup (i.e. there are no
+	 * spaces surrounding the opening tag and there is at least one attribute).
+	 *
+	 * @param {string} markup String of markup.
+	 * @return {string} Node name of the supplied markup.
+	 * @see http://jsperf.com/extract-nodename
+	 */
+	function getNodeName(markup) {
+	  return markup.substring(1, markup.indexOf(' '));
+	}
+
+	var Danger = {
+
+	  /**
+	   * Renders markup into an array of nodes. The markup is expected to render
+	   * into a list of root nodes. Also, the length of `resultList` and
+	   * `markupList` should be the same.
+	   *
+	   * @param {array<string>} markupList List of markup strings to render.
+	   * @return {array<DOMElement>} List of rendered nodes.
+	   * @internal
+	   */
+	  dangerouslyRenderMarkup: function(markupList) {
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      ExecutionEnvironment.canUseDOM,
+	      'dangerouslyRenderMarkup(...): Cannot render markup in a Worker ' +
+	      'thread. This is likely a bug in the framework. Please report ' +
+	      'immediately.'
+	    ) : invariant(ExecutionEnvironment.canUseDOM));
+	    var nodeName;
+	    var markupByNodeName = {};
+	    // Group markup by `nodeName` if a wrap is necessary, else by '*'.
+	    for (var i = 0; i < markupList.length; i++) {
+	      ("production" !== process.env.NODE_ENV ? invariant(
+	        markupList[i],
+	        'dangerouslyRenderMarkup(...): Missing markup.'
+	      ) : invariant(markupList[i]));
+	      nodeName = getNodeName(markupList[i]);
+	      nodeName = getMarkupWrap(nodeName) ? nodeName : '*';
+	      markupByNodeName[nodeName] = markupByNodeName[nodeName] || [];
+	      markupByNodeName[nodeName][i] = markupList[i];
+	    }
+	    var resultList = [];
+	    var resultListAssignmentCount = 0;
+	    for (nodeName in markupByNodeName) {
+	      if (!markupByNodeName.hasOwnProperty(nodeName)) {
+	        continue;
+	      }
+	      var markupListByNodeName = markupByNodeName[nodeName];
+
+	      // This for-in loop skips the holes of the sparse array. The order of
+	      // iteration should follow the order of assignment, which happens to match
+	      // numerical index order, but we don't rely on that.
+	      for (var resultIndex in markupListByNodeName) {
+	        if (markupListByNodeName.hasOwnProperty(resultIndex)) {
+	          var markup = markupListByNodeName[resultIndex];
+
+	          // Push the requested markup with an additional RESULT_INDEX_ATTR
+	          // attribute.  If the markup does not start with a < character, it
+	          // will be discarded below (with an appropriate console.error).
+	          markupListByNodeName[resultIndex] = markup.replace(
+	            OPEN_TAG_NAME_EXP,
+	            // This index will be parsed back out below.
+	            '$1 ' + RESULT_INDEX_ATTR + '="' + resultIndex + '" '
+	          );
+	        }
+	      }
+
+	      // Render each group of markup with similar wrapping `nodeName`.
+	      var renderNodes = createNodesFromMarkup(
+	        markupListByNodeName.join(''),
+	        emptyFunction // Do nothing special with <script> tags.
+	      );
+
+	      for (i = 0; i < renderNodes.length; ++i) {
+	        var renderNode = renderNodes[i];
+	        if (renderNode.hasAttribute &&
+	            renderNode.hasAttribute(RESULT_INDEX_ATTR)) {
+
+	          resultIndex = +renderNode.getAttribute(RESULT_INDEX_ATTR);
+	          renderNode.removeAttribute(RESULT_INDEX_ATTR);
+
+	          ("production" !== process.env.NODE_ENV ? invariant(
+	            !resultList.hasOwnProperty(resultIndex),
+	            'Danger: Assigning to an already-occupied result index.'
+	          ) : invariant(!resultList.hasOwnProperty(resultIndex)));
+
+	          resultList[resultIndex] = renderNode;
+
+	          // This should match resultList.length and markupList.length when
+	          // we're done.
+	          resultListAssignmentCount += 1;
+
+	        } else if ("production" !== process.env.NODE_ENV) {
+	          console.error(
+	            "Danger: Discarding unexpected node:",
+	            renderNode
+	          );
+	        }
+	      }
+	    }
+
+	    // Although resultList was populated out of order, it should now be a dense
+	    // array.
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      resultListAssignmentCount === resultList.length,
+	      'Danger: Did not assign to every index of resultList.'
+	    ) : invariant(resultListAssignmentCount === resultList.length));
+
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      resultList.length === markupList.length,
+	      'Danger: Expected markup to render %s nodes, but rendered %s.',
+	      markupList.length,
+	      resultList.length
+	    ) : invariant(resultList.length === markupList.length));
+
+	    return resultList;
+	  },
+
+	  /**
+	   * Replaces a node with a string of markup at its current position within its
+	   * parent. The markup must render into a single root node.
+	   *
+	   * @param {DOMElement} oldChild Child node to replace.
+	   * @param {string} markup Markup to render in place of the child node.
+	   * @internal
+	   */
+	  dangerouslyReplaceNodeWithMarkup: function(oldChild, markup) {
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      ExecutionEnvironment.canUseDOM,
+	      'dangerouslyReplaceNodeWithMarkup(...): Cannot render markup in a ' +
+	      'worker thread. This is likely a bug in the framework. Please report ' +
+	      'immediately.'
+	    ) : invariant(ExecutionEnvironment.canUseDOM));
+	    ("production" !== process.env.NODE_ENV ? invariant(markup, 'dangerouslyReplaceNodeWithMarkup(...): Missing markup.') : invariant(markup));
+	    ("production" !== process.env.NODE_ENV ? invariant(
+	      oldChild.tagName.toLowerCase() !== 'html',
+	      'dangerouslyReplaceNodeWithMarkup(...): Cannot replace markup of the ' +
+	      '<html> node. This is because browser quirks make this unreliable ' +
+	      'and/or slow. If you want to render to the root you must use ' +
+	      'server rendering. See renderComponentToString().'
+	    ) : invariant(oldChild.tagName.toLowerCase() !== 'html'));
+
+	    var newChild = createNodesFromMarkup(markup, emptyFunction)[0];
+	    oldChild.parentNode.replaceChild(newChild, oldChild);
+	  }
+
+	};
+
+	module.exports = Danger;
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 173 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var config = __webpack_require__(178).config;
+	var configure = __webpack_require__(178).configure;
+	var objectOrFunction = __webpack_require__(179).objectOrFunction;
+	var isFunction = __webpack_require__(179).isFunction;
+	var now = __webpack_require__(179).now;
+	var all = __webpack_require__(180).all;
+	var race = __webpack_require__(181).race;
+	var staticResolve = __webpack_require__(182).resolve;
+	var staticReject = __webpack_require__(183).reject;
+	var asap = __webpack_require__(184).asap;
 
 	var counter = 0;
 
@@ -20448,13 +20729,13 @@
 	exports.Promise = Promise;
 
 /***/ },
-/* 172 */
+/* 174 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {"use strict";
 	/*global self*/
-	var RSVPPromise = __webpack_require__(171).Promise;
-	var isFunction = __webpack_require__(177).isFunction;
+	var RSVPPromise = __webpack_require__(173).Promise;
+	var isFunction = __webpack_require__(179).isFunction;
 
 	function polyfill() {
 	  var local;
@@ -20492,7 +20773,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 173 */
+/* 175 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -20609,665 +20890,7 @@
 
 
 /***/ },
-/* 174 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule getNodeForCharacterOffset
-	 */
-
-	"use strict";
-
-	/**
-	 * Given any node return the first leaf node without children.
-	 *
-	 * @param {DOMElement|DOMTextNode} node
-	 * @return {DOMElement|DOMTextNode}
-	 */
-	function getLeafNode(node) {
-	  while (node && node.firstChild) {
-	    node = node.firstChild;
-	  }
-	  return node;
-	}
-
-	/**
-	 * Get the next sibling within a container. This will walk up the
-	 * DOM if a node's siblings have been exhausted.
-	 *
-	 * @param {DOMElement|DOMTextNode} node
-	 * @return {?DOMElement|DOMTextNode}
-	 */
-	function getSiblingNode(node) {
-	  while (node) {
-	    if (node.nextSibling) {
-	      return node.nextSibling;
-	    }
-	    node = node.parentNode;
-	  }
-	}
-
-	/**
-	 * Get object describing the nodes which contain characters at offset.
-	 *
-	 * @param {DOMElement|DOMTextNode} root
-	 * @param {number} offset
-	 * @return {?object}
-	 */
-	function getNodeForCharacterOffset(root, offset) {
-	  var node = getLeafNode(root);
-	  var nodeStart = 0;
-	  var nodeEnd = 0;
-
-	  while (node) {
-	    if (node.nodeType == 3) {
-	      nodeEnd = nodeStart + node.textContent.length;
-
-	      if (nodeStart <= offset && nodeEnd >= offset) {
-	        return {
-	          node: node,
-	          offset: offset - nodeStart
-	        };
-	      }
-
-	      nodeStart = nodeEnd;
-	    }
-
-	    node = getLeafNode(getSiblingNode(node));
-	  }
-	}
-
-	module.exports = getNodeForCharacterOffset;
-
-
-/***/ },
-/* 175 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(process) {/**
-	 * Copyright 2013-2014 Facebook, Inc.
-	 *
-	 * Licensed under the Apache License, Version 2.0 (the "License");
-	 * you may not use this file except in compliance with the License.
-	 * You may obtain a copy of the License at
-	 *
-	 * http://www.apache.org/licenses/LICENSE-2.0
-	 *
-	 * Unless required by applicable law or agreed to in writing, software
-	 * distributed under the License is distributed on an "AS IS" BASIS,
-	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	 * See the License for the specific language governing permissions and
-	 * limitations under the License.
-	 *
-	 * @providesModule Danger
-	 * @typechecks static-only
-	 */
-
-	/*jslint evil: true, sub: true */
-
-	"use strict";
-
-	var ExecutionEnvironment = __webpack_require__(42);
-
-	var createNodesFromMarkup = __webpack_require__(183);
-	var emptyFunction = __webpack_require__(104);
-	var getMarkupWrap = __webpack_require__(184);
-	var invariant = __webpack_require__(54);
-
-	var OPEN_TAG_NAME_EXP = /^(<[^ \/>]+)/;
-	var RESULT_INDEX_ATTR = 'data-danger-index';
-
-	/**
-	 * Extracts the `nodeName` from a string of markup.
-	 *
-	 * NOTE: Extracting the `nodeName` does not require a regular expression match
-	 * because we make assumptions about React-generated markup (i.e. there are no
-	 * spaces surrounding the opening tag and there is at least one attribute).
-	 *
-	 * @param {string} markup String of markup.
-	 * @return {string} Node name of the supplied markup.
-	 * @see http://jsperf.com/extract-nodename
-	 */
-	function getNodeName(markup) {
-	  return markup.substring(1, markup.indexOf(' '));
-	}
-
-	var Danger = {
-
-	  /**
-	   * Renders markup into an array of nodes. The markup is expected to render
-	   * into a list of root nodes. Also, the length of `resultList` and
-	   * `markupList` should be the same.
-	   *
-	   * @param {array<string>} markupList List of markup strings to render.
-	   * @return {array<DOMElement>} List of rendered nodes.
-	   * @internal
-	   */
-	  dangerouslyRenderMarkup: function(markupList) {
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      ExecutionEnvironment.canUseDOM,
-	      'dangerouslyRenderMarkup(...): Cannot render markup in a Worker ' +
-	      'thread. This is likely a bug in the framework. Please report ' +
-	      'immediately.'
-	    ) : invariant(ExecutionEnvironment.canUseDOM));
-	    var nodeName;
-	    var markupByNodeName = {};
-	    // Group markup by `nodeName` if a wrap is necessary, else by '*'.
-	    for (var i = 0; i < markupList.length; i++) {
-	      ("production" !== process.env.NODE_ENV ? invariant(
-	        markupList[i],
-	        'dangerouslyRenderMarkup(...): Missing markup.'
-	      ) : invariant(markupList[i]));
-	      nodeName = getNodeName(markupList[i]);
-	      nodeName = getMarkupWrap(nodeName) ? nodeName : '*';
-	      markupByNodeName[nodeName] = markupByNodeName[nodeName] || [];
-	      markupByNodeName[nodeName][i] = markupList[i];
-	    }
-	    var resultList = [];
-	    var resultListAssignmentCount = 0;
-	    for (nodeName in markupByNodeName) {
-	      if (!markupByNodeName.hasOwnProperty(nodeName)) {
-	        continue;
-	      }
-	      var markupListByNodeName = markupByNodeName[nodeName];
-
-	      // This for-in loop skips the holes of the sparse array. The order of
-	      // iteration should follow the order of assignment, which happens to match
-	      // numerical index order, but we don't rely on that.
-	      for (var resultIndex in markupListByNodeName) {
-	        if (markupListByNodeName.hasOwnProperty(resultIndex)) {
-	          var markup = markupListByNodeName[resultIndex];
-
-	          // Push the requested markup with an additional RESULT_INDEX_ATTR
-	          // attribute.  If the markup does not start with a < character, it
-	          // will be discarded below (with an appropriate console.error).
-	          markupListByNodeName[resultIndex] = markup.replace(
-	            OPEN_TAG_NAME_EXP,
-	            // This index will be parsed back out below.
-	            '$1 ' + RESULT_INDEX_ATTR + '="' + resultIndex + '" '
-	          );
-	        }
-	      }
-
-	      // Render each group of markup with similar wrapping `nodeName`.
-	      var renderNodes = createNodesFromMarkup(
-	        markupListByNodeName.join(''),
-	        emptyFunction // Do nothing special with <script> tags.
-	      );
-
-	      for (i = 0; i < renderNodes.length; ++i) {
-	        var renderNode = renderNodes[i];
-	        if (renderNode.hasAttribute &&
-	            renderNode.hasAttribute(RESULT_INDEX_ATTR)) {
-
-	          resultIndex = +renderNode.getAttribute(RESULT_INDEX_ATTR);
-	          renderNode.removeAttribute(RESULT_INDEX_ATTR);
-
-	          ("production" !== process.env.NODE_ENV ? invariant(
-	            !resultList.hasOwnProperty(resultIndex),
-	            'Danger: Assigning to an already-occupied result index.'
-	          ) : invariant(!resultList.hasOwnProperty(resultIndex)));
-
-	          resultList[resultIndex] = renderNode;
-
-	          // This should match resultList.length and markupList.length when
-	          // we're done.
-	          resultListAssignmentCount += 1;
-
-	        } else if ("production" !== process.env.NODE_ENV) {
-	          console.error(
-	            "Danger: Discarding unexpected node:",
-	            renderNode
-	          );
-	        }
-	      }
-	    }
-
-	    // Although resultList was populated out of order, it should now be a dense
-	    // array.
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      resultListAssignmentCount === resultList.length,
-	      'Danger: Did not assign to every index of resultList.'
-	    ) : invariant(resultListAssignmentCount === resultList.length));
-
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      resultList.length === markupList.length,
-	      'Danger: Expected markup to render %s nodes, but rendered %s.',
-	      markupList.length,
-	      resultList.length
-	    ) : invariant(resultList.length === markupList.length));
-
-	    return resultList;
-	  },
-
-	  /**
-	   * Replaces a node with a string of markup at its current position within its
-	   * parent. The markup must render into a single root node.
-	   *
-	   * @param {DOMElement} oldChild Child node to replace.
-	   * @param {string} markup Markup to render in place of the child node.
-	   * @internal
-	   */
-	  dangerouslyReplaceNodeWithMarkup: function(oldChild, markup) {
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      ExecutionEnvironment.canUseDOM,
-	      'dangerouslyReplaceNodeWithMarkup(...): Cannot render markup in a ' +
-	      'worker thread. This is likely a bug in the framework. Please report ' +
-	      'immediately.'
-	    ) : invariant(ExecutionEnvironment.canUseDOM));
-	    ("production" !== process.env.NODE_ENV ? invariant(markup, 'dangerouslyReplaceNodeWithMarkup(...): Missing markup.') : invariant(markup));
-	    ("production" !== process.env.NODE_ENV ? invariant(
-	      oldChild.tagName.toLowerCase() !== 'html',
-	      'dangerouslyReplaceNodeWithMarkup(...): Cannot replace markup of the ' +
-	      '<html> node. This is because browser quirks make this unreliable ' +
-	      'and/or slow. If you want to render to the root you must use ' +
-	      'server rendering. See renderComponentToString().'
-	    ) : invariant(oldChild.tagName.toLowerCase() !== 'html'));
-
-	    var newChild = createNodesFromMarkup(markup, emptyFunction)[0];
-	    oldChild.parentNode.replaceChild(newChild, oldChild);
-	  }
-
-	};
-
-	module.exports = Danger;
-	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
-
-/***/ },
 /* 176 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var config = {
-	  instrument: false
-	};
-
-	function configure(name, value) {
-	  if (arguments.length === 2) {
-	    config[name] = value;
-	  } else {
-	    return config[name];
-	  }
-	}
-
-	exports.config = config;
-	exports.configure = configure;
-
-/***/ },
-/* 177 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	function objectOrFunction(x) {
-	  return isFunction(x) || (typeof x === "object" && x !== null);
-	}
-
-	function isFunction(x) {
-	  return typeof x === "function";
-	}
-
-	function isArray(x) {
-	  return Object.prototype.toString.call(x) === "[object Array]";
-	}
-
-	// Date.now is not available in browsers < IE9
-	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now#Compatibility
-	var now = Date.now || function() { return new Date().getTime(); };
-
-
-	exports.objectOrFunction = objectOrFunction;
-	exports.isFunction = isFunction;
-	exports.isArray = isArray;
-	exports.now = now;
-
-/***/ },
-/* 178 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	/* global toString */
-
-	var isArray = __webpack_require__(177).isArray;
-	var isFunction = __webpack_require__(177).isFunction;
-
-	/**
-	  Returns a promise that is fulfilled when all the given promises have been
-	  fulfilled, or rejected if any of them become rejected. The return promise
-	  is fulfilled with an array that gives all the values in the order they were
-	  passed in the `promises` array argument.
-
-	  Example:
-
-	  ```javascript
-	  var promise1 = RSVP.resolve(1);
-	  var promise2 = RSVP.resolve(2);
-	  var promise3 = RSVP.resolve(3);
-	  var promises = [ promise1, promise2, promise3 ];
-
-	  RSVP.all(promises).then(function(array){
-	    // The array here would be [ 1, 2, 3 ];
-	  });
-	  ```
-
-	  If any of the `promises` given to `RSVP.all` are rejected, the first promise
-	  that is rejected will be given as an argument to the returned promises's
-	  rejection handler. For example:
-
-	  Example:
-
-	  ```javascript
-	  var promise1 = RSVP.resolve(1);
-	  var promise2 = RSVP.reject(new Error("2"));
-	  var promise3 = RSVP.reject(new Error("3"));
-	  var promises = [ promise1, promise2, promise3 ];
-
-	  RSVP.all(promises).then(function(array){
-	    // Code here never runs because there are rejected promises!
-	  }, function(error) {
-	    // error.message === "2"
-	  });
-	  ```
-
-	  @method all
-	  @for RSVP
-	  @param {Array} promises
-	  @param {String} label
-	  @return {Promise} promise that is fulfilled when all `promises` have been
-	  fulfilled, or rejected if any of them become rejected.
-	*/
-	function all(promises) {
-	  /*jshint validthis:true */
-	  var Promise = this;
-
-	  if (!isArray(promises)) {
-	    throw new TypeError('You must pass an array to all.');
-	  }
-
-	  return new Promise(function(resolve, reject) {
-	    var results = [], remaining = promises.length,
-	    promise;
-
-	    if (remaining === 0) {
-	      resolve([]);
-	    }
-
-	    function resolver(index) {
-	      return function(value) {
-	        resolveAll(index, value);
-	      };
-	    }
-
-	    function resolveAll(index, value) {
-	      results[index] = value;
-	      if (--remaining === 0) {
-	        resolve(results);
-	      }
-	    }
-
-	    for (var i = 0; i < promises.length; i++) {
-	      promise = promises[i];
-
-	      if (promise && isFunction(promise.then)) {
-	        promise.then(resolver(i), reject);
-	      } else {
-	        resolveAll(i, promise);
-	      }
-	    }
-	  });
-	}
-
-	exports.all = all;
-
-/***/ },
-/* 179 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	/* global toString */
-	var isArray = __webpack_require__(177).isArray;
-
-	/**
-	  `RSVP.race` allows you to watch a series of promises and act as soon as the
-	  first promise given to the `promises` argument fulfills or rejects.
-
-	  Example:
-
-	  ```javascript
-	  var promise1 = new RSVP.Promise(function(resolve, reject){
-	    setTimeout(function(){
-	      resolve("promise 1");
-	    }, 200);
-	  });
-
-	  var promise2 = new RSVP.Promise(function(resolve, reject){
-	    setTimeout(function(){
-	      resolve("promise 2");
-	    }, 100);
-	  });
-
-	  RSVP.race([promise1, promise2]).then(function(result){
-	    // result === "promise 2" because it was resolved before promise1
-	    // was resolved.
-	  });
-	  ```
-
-	  `RSVP.race` is deterministic in that only the state of the first completed
-	  promise matters. For example, even if other promises given to the `promises`
-	  array argument are resolved, but the first completed promise has become
-	  rejected before the other promises became fulfilled, the returned promise
-	  will become rejected:
-
-	  ```javascript
-	  var promise1 = new RSVP.Promise(function(resolve, reject){
-	    setTimeout(function(){
-	      resolve("promise 1");
-	    }, 200);
-	  });
-
-	  var promise2 = new RSVP.Promise(function(resolve, reject){
-	    setTimeout(function(){
-	      reject(new Error("promise 2"));
-	    }, 100);
-	  });
-
-	  RSVP.race([promise1, promise2]).then(function(result){
-	    // Code here never runs because there are rejected promises!
-	  }, function(reason){
-	    // reason.message === "promise2" because promise 2 became rejected before
-	    // promise 1 became fulfilled
-	  });
-	  ```
-
-	  @method race
-	  @for RSVP
-	  @param {Array} promises array of promises to observe
-	  @param {String} label optional string for describing the promise returned.
-	  Useful for tooling.
-	  @return {Promise} a promise that becomes fulfilled with the value the first
-	  completed promises is resolved with if the first completed promise was
-	  fulfilled, or rejected with the reason that the first completed promise
-	  was rejected with.
-	*/
-	function race(promises) {
-	  /*jshint validthis:true */
-	  var Promise = this;
-
-	  if (!isArray(promises)) {
-	    throw new TypeError('You must pass an array to race.');
-	  }
-	  return new Promise(function(resolve, reject) {
-	    var results = [], promise;
-
-	    for (var i = 0; i < promises.length; i++) {
-	      promise = promises[i];
-
-	      if (promise && typeof promise.then === 'function') {
-	        promise.then(resolve, reject);
-	      } else {
-	        resolve(promise);
-	      }
-	    }
-	  });
-	}
-
-	exports.race = race;
-
-/***/ },
-/* 180 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	function resolve(value) {
-	  /*jshint validthis:true */
-	  if (value && typeof value === 'object' && value.constructor === this) {
-	    return value;
-	  }
-
-	  var Promise = this;
-
-	  return new Promise(function(resolve) {
-	    resolve(value);
-	  });
-	}
-
-	exports.resolve = resolve;
-
-/***/ },
-/* 181 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	/**
-	  `RSVP.reject` returns a promise that will become rejected with the passed
-	  `reason`. `RSVP.reject` is essentially shorthand for the following:
-
-	  ```javascript
-	  var promise = new RSVP.Promise(function(resolve, reject){
-	    reject(new Error('WHOOPS'));
-	  });
-
-	  promise.then(function(value){
-	    // Code here doesn't run because the promise is rejected!
-	  }, function(reason){
-	    // reason.message === 'WHOOPS'
-	  });
-	  ```
-
-	  Instead of writing the above, your code now simply becomes the following:
-
-	  ```javascript
-	  var promise = RSVP.reject(new Error('WHOOPS'));
-
-	  promise.then(function(value){
-	    // Code here doesn't run because the promise is rejected!
-	  }, function(reason){
-	    // reason.message === 'WHOOPS'
-	  });
-	  ```
-
-	  @method reject
-	  @for RSVP
-	  @param {Any} reason value that the returned promise will be rejected with.
-	  @param {String} label optional string for identifying the returned promise.
-	  Useful for tooling.
-	  @return {Promise} a promise that will become rejected with the given
-	  `reason`.
-	*/
-	function reject(reason) {
-	  /*jshint validthis:true */
-	  var Promise = this;
-
-	  return new Promise(function (resolve, reject) {
-	    reject(reason);
-	  });
-	}
-
-	exports.reject = reject;
-
-/***/ },
-/* 182 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(global, process) {"use strict";
-	var browserGlobal = (typeof window !== 'undefined') ? window : {};
-	var BrowserMutationObserver = browserGlobal.MutationObserver || browserGlobal.WebKitMutationObserver;
-	var local = (typeof global !== 'undefined') ? global : (this === undefined? window:this);
-
-	// node
-	function useNextTick() {
-	  return function() {
-	    process.nextTick(flush);
-	  };
-	}
-
-	function useMutationObserver() {
-	  var iterations = 0;
-	  var observer = new BrowserMutationObserver(flush);
-	  var node = document.createTextNode('');
-	  observer.observe(node, { characterData: true });
-
-	  return function() {
-	    node.data = (iterations = ++iterations % 2);
-	  };
-	}
-
-	function useSetTimeout() {
-	  return function() {
-	    local.setTimeout(flush, 1);
-	  };
-	}
-
-	var queue = [];
-	function flush() {
-	  for (var i = 0; i < queue.length; i++) {
-	    var tuple = queue[i];
-	    var callback = tuple[0], arg = tuple[1];
-	    callback(arg);
-	  }
-	  queue = [];
-	}
-
-	var scheduleFlush;
-
-	// Decide what async method to use to triggering processing of queued callbacks:
-	if (typeof process !== 'undefined' && {}.toString.call(process) === '[object process]') {
-	  scheduleFlush = useNextTick();
-	} else if (BrowserMutationObserver) {
-	  scheduleFlush = useMutationObserver();
-	} else {
-	  scheduleFlush = useSetTimeout();
-	}
-
-	function asap(callback, arg) {
-	  var length = queue.push([callback, arg]);
-	  if (length === 1) {
-	    // If length is 1, that means that we need to schedule an async flush.
-	    // If additional callbacks are queued before the queue is flushed, they
-	    // will be processed by this flush that we are scheduling.
-	    scheduleFlush();
-	  }
-	}
-
-	exports.asap = asap;
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(44)))
-
-/***/ },
-/* 183 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -21291,11 +20914,11 @@
 
 	/*jslint evil: true, sub: true */
 
-	var ExecutionEnvironment = __webpack_require__(42);
+	var ExecutionEnvironment = __webpack_require__(41);
 
 	var createArrayFrom = __webpack_require__(185);
-	var getMarkupWrap = __webpack_require__(184);
-	var invariant = __webpack_require__(54);
+	var getMarkupWrap = __webpack_require__(177);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Dummy container used to render all markup.
@@ -21364,10 +20987,10 @@
 
 	module.exports = createNodesFromMarkup;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ },
-/* 184 */
+/* 177 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -21388,9 +21011,9 @@
 	 * @providesModule getMarkupWrap
 	 */
 
-	var ExecutionEnvironment = __webpack_require__(42);
+	var ExecutionEnvironment = __webpack_require__(41);
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Dummy container used to detect which wraps are necessary.
@@ -21491,7 +21114,385 @@
 
 	module.exports = getMarkupWrap;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 178 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var config = {
+	  instrument: false
+	};
+
+	function configure(name, value) {
+	  if (arguments.length === 2) {
+	    config[name] = value;
+	  } else {
+	    return config[name];
+	  }
+	}
+
+	exports.config = config;
+	exports.configure = configure;
+
+/***/ },
+/* 179 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	function objectOrFunction(x) {
+	  return isFunction(x) || (typeof x === "object" && x !== null);
+	}
+
+	function isFunction(x) {
+	  return typeof x === "function";
+	}
+
+	function isArray(x) {
+	  return Object.prototype.toString.call(x) === "[object Array]";
+	}
+
+	// Date.now is not available in browsers < IE9
+	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now#Compatibility
+	var now = Date.now || function() { return new Date().getTime(); };
+
+
+	exports.objectOrFunction = objectOrFunction;
+	exports.isFunction = isFunction;
+	exports.isArray = isArray;
+	exports.now = now;
+
+/***/ },
+/* 180 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/* global toString */
+
+	var isArray = __webpack_require__(179).isArray;
+	var isFunction = __webpack_require__(179).isFunction;
+
+	/**
+	  Returns a promise that is fulfilled when all the given promises have been
+	  fulfilled, or rejected if any of them become rejected. The return promise
+	  is fulfilled with an array that gives all the values in the order they were
+	  passed in the `promises` array argument.
+
+	  Example:
+
+	  ```javascript
+	  var promise1 = RSVP.resolve(1);
+	  var promise2 = RSVP.resolve(2);
+	  var promise3 = RSVP.resolve(3);
+	  var promises = [ promise1, promise2, promise3 ];
+
+	  RSVP.all(promises).then(function(array){
+	    // The array here would be [ 1, 2, 3 ];
+	  });
+	  ```
+
+	  If any of the `promises` given to `RSVP.all` are rejected, the first promise
+	  that is rejected will be given as an argument to the returned promises's
+	  rejection handler. For example:
+
+	  Example:
+
+	  ```javascript
+	  var promise1 = RSVP.resolve(1);
+	  var promise2 = RSVP.reject(new Error("2"));
+	  var promise3 = RSVP.reject(new Error("3"));
+	  var promises = [ promise1, promise2, promise3 ];
+
+	  RSVP.all(promises).then(function(array){
+	    // Code here never runs because there are rejected promises!
+	  }, function(error) {
+	    // error.message === "2"
+	  });
+	  ```
+
+	  @method all
+	  @for RSVP
+	  @param {Array} promises
+	  @param {String} label
+	  @return {Promise} promise that is fulfilled when all `promises` have been
+	  fulfilled, or rejected if any of them become rejected.
+	*/
+	function all(promises) {
+	  /*jshint validthis:true */
+	  var Promise = this;
+
+	  if (!isArray(promises)) {
+	    throw new TypeError('You must pass an array to all.');
+	  }
+
+	  return new Promise(function(resolve, reject) {
+	    var results = [], remaining = promises.length,
+	    promise;
+
+	    if (remaining === 0) {
+	      resolve([]);
+	    }
+
+	    function resolver(index) {
+	      return function(value) {
+	        resolveAll(index, value);
+	      };
+	    }
+
+	    function resolveAll(index, value) {
+	      results[index] = value;
+	      if (--remaining === 0) {
+	        resolve(results);
+	      }
+	    }
+
+	    for (var i = 0; i < promises.length; i++) {
+	      promise = promises[i];
+
+	      if (promise && isFunction(promise.then)) {
+	        promise.then(resolver(i), reject);
+	      } else {
+	        resolveAll(i, promise);
+	      }
+	    }
+	  });
+	}
+
+	exports.all = all;
+
+/***/ },
+/* 181 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/* global toString */
+	var isArray = __webpack_require__(179).isArray;
+
+	/**
+	  `RSVP.race` allows you to watch a series of promises and act as soon as the
+	  first promise given to the `promises` argument fulfills or rejects.
+
+	  Example:
+
+	  ```javascript
+	  var promise1 = new RSVP.Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      resolve("promise 1");
+	    }, 200);
+	  });
+
+	  var promise2 = new RSVP.Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      resolve("promise 2");
+	    }, 100);
+	  });
+
+	  RSVP.race([promise1, promise2]).then(function(result){
+	    // result === "promise 2" because it was resolved before promise1
+	    // was resolved.
+	  });
+	  ```
+
+	  `RSVP.race` is deterministic in that only the state of the first completed
+	  promise matters. For example, even if other promises given to the `promises`
+	  array argument are resolved, but the first completed promise has become
+	  rejected before the other promises became fulfilled, the returned promise
+	  will become rejected:
+
+	  ```javascript
+	  var promise1 = new RSVP.Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      resolve("promise 1");
+	    }, 200);
+	  });
+
+	  var promise2 = new RSVP.Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      reject(new Error("promise 2"));
+	    }, 100);
+	  });
+
+	  RSVP.race([promise1, promise2]).then(function(result){
+	    // Code here never runs because there are rejected promises!
+	  }, function(reason){
+	    // reason.message === "promise2" because promise 2 became rejected before
+	    // promise 1 became fulfilled
+	  });
+	  ```
+
+	  @method race
+	  @for RSVP
+	  @param {Array} promises array of promises to observe
+	  @param {String} label optional string for describing the promise returned.
+	  Useful for tooling.
+	  @return {Promise} a promise that becomes fulfilled with the value the first
+	  completed promises is resolved with if the first completed promise was
+	  fulfilled, or rejected with the reason that the first completed promise
+	  was rejected with.
+	*/
+	function race(promises) {
+	  /*jshint validthis:true */
+	  var Promise = this;
+
+	  if (!isArray(promises)) {
+	    throw new TypeError('You must pass an array to race.');
+	  }
+	  return new Promise(function(resolve, reject) {
+	    var results = [], promise;
+
+	    for (var i = 0; i < promises.length; i++) {
+	      promise = promises[i];
+
+	      if (promise && typeof promise.then === 'function') {
+	        promise.then(resolve, reject);
+	      } else {
+	        resolve(promise);
+	      }
+	    }
+	  });
+	}
+
+	exports.race = race;
+
+/***/ },
+/* 182 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	function resolve(value) {
+	  /*jshint validthis:true */
+	  if (value && typeof value === 'object' && value.constructor === this) {
+	    return value;
+	  }
+
+	  var Promise = this;
+
+	  return new Promise(function(resolve) {
+	    resolve(value);
+	  });
+	}
+
+	exports.resolve = resolve;
+
+/***/ },
+/* 183 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/**
+	  `RSVP.reject` returns a promise that will become rejected with the passed
+	  `reason`. `RSVP.reject` is essentially shorthand for the following:
+
+	  ```javascript
+	  var promise = new RSVP.Promise(function(resolve, reject){
+	    reject(new Error('WHOOPS'));
+	  });
+
+	  promise.then(function(value){
+	    // Code here doesn't run because the promise is rejected!
+	  }, function(reason){
+	    // reason.message === 'WHOOPS'
+	  });
+	  ```
+
+	  Instead of writing the above, your code now simply becomes the following:
+
+	  ```javascript
+	  var promise = RSVP.reject(new Error('WHOOPS'));
+
+	  promise.then(function(value){
+	    // Code here doesn't run because the promise is rejected!
+	  }, function(reason){
+	    // reason.message === 'WHOOPS'
+	  });
+	  ```
+
+	  @method reject
+	  @for RSVP
+	  @param {Any} reason value that the returned promise will be rejected with.
+	  @param {String} label optional string for identifying the returned promise.
+	  Useful for tooling.
+	  @return {Promise} a promise that will become rejected with the given
+	  `reason`.
+	*/
+	function reject(reason) {
+	  /*jshint validthis:true */
+	  var Promise = this;
+
+	  return new Promise(function (resolve, reject) {
+	    reject(reason);
+	  });
+	}
+
+	exports.reject = reject;
+
+/***/ },
+/* 184 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(global, process) {"use strict";
+	var browserGlobal = (typeof window !== 'undefined') ? window : {};
+	var BrowserMutationObserver = browserGlobal.MutationObserver || browserGlobal.WebKitMutationObserver;
+	var local = (typeof global !== 'undefined') ? global : (this === undefined? window:this);
+
+	// node
+	function useNextTick() {
+	  return function() {
+	    process.nextTick(flush);
+	  };
+	}
+
+	function useMutationObserver() {
+	  var iterations = 0;
+	  var observer = new BrowserMutationObserver(flush);
+	  var node = document.createTextNode('');
+	  observer.observe(node, { characterData: true });
+
+	  return function() {
+	    node.data = (iterations = ++iterations % 2);
+	  };
+	}
+
+	function useSetTimeout() {
+	  return function() {
+	    local.setTimeout(flush, 1);
+	  };
+	}
+
+	var queue = [];
+	function flush() {
+	  for (var i = 0; i < queue.length; i++) {
+	    var tuple = queue[i];
+	    var callback = tuple[0], arg = tuple[1];
+	    callback(arg);
+	  }
+	  queue = [];
+	}
+
+	var scheduleFlush;
+
+	// Decide what async method to use to triggering processing of queued callbacks:
+	if (typeof process !== 'undefined' && {}.toString.call(process) === '[object process]') {
+	  scheduleFlush = useNextTick();
+	} else if (BrowserMutationObserver) {
+	  scheduleFlush = useMutationObserver();
+	} else {
+	  scheduleFlush = useSetTimeout();
+	}
+
+	function asap(callback, arg) {
+	  var length = queue.push([callback, arg]);
+	  if (length === 1) {
+	    // If length is 1, that means that we need to schedule an async flush.
+	    // If additional callbacks are queued before the queue is flushed, they
+	    // will be processed by this flush that we are scheduling.
+	    scheduleFlush();
+	  }
+	}
+
+	exports.asap = asap;
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(43)))
 
 /***/ },
 /* 185 */
@@ -21613,7 +21614,7 @@
 	 * @typechecks
 	 */
 
-	var invariant = __webpack_require__(54);
+	var invariant = __webpack_require__(48);
 
 	/**
 	 * Convert array-like objects to arrays.
@@ -21670,7 +21671,9155 @@
 
 	module.exports = toArray;
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
+
+/***/ },
+/* 187 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(188);
+	if(typeof content === 'string') content = [module.id, content, ''];
+	// add the styles to the DOM
+	var update = __webpack_require__(11)(content);
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		module.hot.accept("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/base.css", function() {
+			var newContent = require("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/base.css");
+			if(typeof newContent === 'string') newContent = [module.id, newContent, ''];
+			update(newContent);
+		});
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 188 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(18)();
+	exports.push([module.id, "*,*:before,*:after {\n    -webkit-box-sizing: border-box;\n    -moz-box-sizing: border-box;\n    box-sizing: border-box;\n    -webkit-font-smoothing: subpixel-antialiased;\n}\n\nhtml {\n    font-size: 100%;\n    line-height: 1.5;\n    -ms-text-size-adjust: 100%;\n    -webkit-text-size-adjust: 100%;\n    -webkit-tap-highlight-color: rgba(0,0,0,0);\n    text-size-adjust: 100%;\n}\n\nhtml,body {\n    height: 100%;\n}\n\nbody {\n    position: relative;\n    margin: 0;\n    background-color: white;\n}\n\n::-moz-selection {\n    background: black;\n    color: white;\n    text-shadow: none;\n}\n\n::selection {\n    background: black;\n    color: white;\n    text-shadow: none;\n}\n\n[hidden],template,.hidden,#stage_probe {\n    display: none !important;\n    visibility: hidden;\n}\n\n.invisible,.preference input[type=\"radio\"] {\n    position: absolute;\n    visibility: hidden;\n    opacity: 0;\n}\n\n[disabled],.disabled {\n    cursor: default;\n}", ""]);
+
+/***/ },
+/* 189 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(190);
+	if(typeof content === 'string') content = [module.id, content, ''];
+	// add the styles to the DOM
+	var update = __webpack_require__(11)(content);
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		module.hot.accept("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/main.css", function() {
+			var newContent = require("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/main.css");
+			if(typeof newContent === 'string') newContent = [module.id, newContent, ''];
+			update(newContent);
+		});
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 190 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(18)();
+	exports.push([module.id, "#main-container {\n  position: relative;\n  padding: 10px 20px;\n  min-height: 100%;\n}", ""]);
+
+/***/ },
+/* 191 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(192);
+	if(typeof content === 'string') content = [module.id, content, ''];
+	// add the styles to the DOM
+	var update = __webpack_require__(11)(content);
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		module.hot.accept("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/header.css", function() {
+			var newContent = require("!!/Users/fraserxu/projects/react-weibo/node_modules/css-loader/index.js!/Users/fraserxu/projects/react-weibo/css/header.css");
+			if(typeof newContent === 'string') newContent = [module.id, newContent, ''];
+			update(newContent);
+		});
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 192 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(18)();
+	exports.push([module.id, ".user_header {\n  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);\n  margin-bottom: 20px;\n}\n\n.login-btn,\n.logout-btn {\n  border-bottom: 1px solid;\n  color: #999999;\n  position: absolute;\n  z-index: 10;\n  top: 0.9375rem;\n  right: 0.9375rem;\n}", ""]);
+
+/***/ },
+/* 193 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	var moment = __webpack_require__(194);
+	var React = __webpack_require__(4);
+
+	var Time = React.createClass({
+
+	  displayName: 'Time',
+
+	  render: function() {
+	    var value = this.props.value;
+
+	    if (!moment.isMoment(value)) {
+	      value = moment(value);
+	    }
+
+	    var machineReadable = value.format('YYYY-MM-DDTHH:mm:ssZ');
+
+	    var props = {};
+	    for (var k in this.props) {
+	      if (this.props.hasOwnProperty(k) &&
+	          k !== 'value' &&
+	          k !== 'relative' &&
+	          k !== 'format')
+	        props[k] = this.props[k];
+	    }
+
+	    if (this.props.relative || this.props.format) {
+	      var humanReadable = this.props.relative ? value.fromNow() : value.format(this.props.format);
+	      props.dateTime = machineReadable;
+	      return React.DOM.time(props, humanReadable);
+	    } else {
+	      return React.DOM.time(props, machineReadable);
+	    }
+	  }
+	});
+
+	module.exports = Time;
+
+
+/***/ },
+/* 194 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(global, module) {//! moment.js
+	//! version : 2.6.0
+	//! authors : Tim Wood, Iskren Chernev, Moment.js contributors
+	//! license : MIT
+	//! momentjs.com
+
+	(function (undefined) {
+
+	    /************************************
+	        Constants
+	    ************************************/
+
+	    var moment,
+	        VERSION = "2.6.0",
+	        // the global-scope this is NOT the global object in Node.js
+	        globalScope = typeof global !== 'undefined' ? global : this,
+	        oldGlobalMoment,
+	        round = Math.round,
+	        i,
+
+	        YEAR = 0,
+	        MONTH = 1,
+	        DATE = 2,
+	        HOUR = 3,
+	        MINUTE = 4,
+	        SECOND = 5,
+	        MILLISECOND = 6,
+
+	        // internal storage for language config files
+	        languages = {},
+
+	        // moment internal properties
+	        momentProperties = {
+	            _isAMomentObject: null,
+	            _i : null,
+	            _f : null,
+	            _l : null,
+	            _strict : null,
+	            _isUTC : null,
+	            _offset : null,  // optional. Combine with _isUTC
+	            _pf : null,
+	            _lang : null  // optional
+	        },
+
+	        // check for nodeJS
+	        hasModule = (typeof module !== 'undefined' && module.exports),
+
+	        // ASP.NET json date format regex
+	        aspNetJsonRegex = /^\/?Date\((\-?\d+)/i,
+	        aspNetTimeSpanJsonRegex = /(\-)?(?:(\d*)\.)?(\d+)\:(\d+)(?:\:(\d+)\.?(\d{3})?)?/,
+
+	        // from http://docs.closure-library.googlecode.com/git/closure_goog_date_date.js.source.html
+	        // somewhat more in line with 4.4.3.2 2004 spec, but allows decimal anywhere
+	        isoDurationRegex = /^(-)?P(?:(?:([0-9,.]*)Y)?(?:([0-9,.]*)M)?(?:([0-9,.]*)D)?(?:T(?:([0-9,.]*)H)?(?:([0-9,.]*)M)?(?:([0-9,.]*)S)?)?|([0-9,.]*)W)$/,
+
+	        // format tokens
+	        formattingTokens = /(\[[^\[]*\])|(\\)?(Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|w[o|w]?|W[o|W]?|Q|YYYYYY|YYYYY|YYYY|YY|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|mm?|ss?|S{1,4}|X|zz?|ZZ?|.)/g,
+	        localFormattingTokens = /(\[[^\[]*\])|(\\)?(LT|LL?L?L?|l{1,4})/g,
+
+	        // parsing token regexes
+	        parseTokenOneOrTwoDigits = /\d\d?/, // 0 - 99
+	        parseTokenOneToThreeDigits = /\d{1,3}/, // 0 - 999
+	        parseTokenOneToFourDigits = /\d{1,4}/, // 0 - 9999
+	        parseTokenOneToSixDigits = /[+\-]?\d{1,6}/, // -999,999 - 999,999
+	        parseTokenDigits = /\d+/, // nonzero number of digits
+	        parseTokenWord = /[0-9]*['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+|[\u0600-\u06FF\/]+(\s*?[\u0600-\u06FF]+){1,2}/i, // any word (or two) characters or numbers including two/three word month in arabic.
+	        parseTokenTimezone = /Z|[\+\-]\d\d:?\d\d/gi, // +00:00 -00:00 +0000 -0000 or Z
+	        parseTokenT = /T/i, // T (ISO separator)
+	        parseTokenTimestampMs = /[\+\-]?\d+(\.\d{1,3})?/, // 123456789 123456789.123
+	        parseTokenOrdinal = /\d{1,2}/,
+
+	        //strict parsing regexes
+	        parseTokenOneDigit = /\d/, // 0 - 9
+	        parseTokenTwoDigits = /\d\d/, // 00 - 99
+	        parseTokenThreeDigits = /\d{3}/, // 000 - 999
+	        parseTokenFourDigits = /\d{4}/, // 0000 - 9999
+	        parseTokenSixDigits = /[+-]?\d{6}/, // -999,999 - 999,999
+	        parseTokenSignedNumber = /[+-]?\d+/, // -inf - inf
+
+	        // iso 8601 regex
+	        // 0000-00-00 0000-W00 or 0000-W00-0 + T + 00 or 00:00 or 00:00:00 or 00:00:00.000 + +00:00 or +0000 or +00)
+	        isoRegex = /^\s*(?:[+-]\d{6}|\d{4})-(?:(\d\d-\d\d)|(W\d\d$)|(W\d\d-\d)|(\d\d\d))((T| )(\d\d(:\d\d(:\d\d(\.\d+)?)?)?)?([\+\-]\d\d(?::?\d\d)?|\s*Z)?)?$/,
+
+	        isoFormat = 'YYYY-MM-DDTHH:mm:ssZ',
+
+	        isoDates = [
+	            ['YYYYYY-MM-DD', /[+-]\d{6}-\d{2}-\d{2}/],
+	            ['YYYY-MM-DD', /\d{4}-\d{2}-\d{2}/],
+	            ['GGGG-[W]WW-E', /\d{4}-W\d{2}-\d/],
+	            ['GGGG-[W]WW', /\d{4}-W\d{2}/],
+	            ['YYYY-DDD', /\d{4}-\d{3}/]
+	        ],
+
+	        // iso time formats and regexes
+	        isoTimes = [
+	            ['HH:mm:ss.SSSS', /(T| )\d\d:\d\d:\d\d\.\d+/],
+	            ['HH:mm:ss', /(T| )\d\d:\d\d:\d\d/],
+	            ['HH:mm', /(T| )\d\d:\d\d/],
+	            ['HH', /(T| )\d\d/]
+	        ],
+
+	        // timezone chunker "+10:00" > ["10", "00"] or "-1530" > ["-15", "30"]
+	        parseTimezoneChunker = /([\+\-]|\d\d)/gi,
+
+	        // getter and setter names
+	        proxyGettersAndSetters = 'Date|Hours|Minutes|Seconds|Milliseconds'.split('|'),
+	        unitMillisecondFactors = {
+	            'Milliseconds' : 1,
+	            'Seconds' : 1e3,
+	            'Minutes' : 6e4,
+	            'Hours' : 36e5,
+	            'Days' : 864e5,
+	            'Months' : 2592e6,
+	            'Years' : 31536e6
+	        },
+
+	        unitAliases = {
+	            ms : 'millisecond',
+	            s : 'second',
+	            m : 'minute',
+	            h : 'hour',
+	            d : 'day',
+	            D : 'date',
+	            w : 'week',
+	            W : 'isoWeek',
+	            M : 'month',
+	            Q : 'quarter',
+	            y : 'year',
+	            DDD : 'dayOfYear',
+	            e : 'weekday',
+	            E : 'isoWeekday',
+	            gg: 'weekYear',
+	            GG: 'isoWeekYear'
+	        },
+
+	        camelFunctions = {
+	            dayofyear : 'dayOfYear',
+	            isoweekday : 'isoWeekday',
+	            isoweek : 'isoWeek',
+	            weekyear : 'weekYear',
+	            isoweekyear : 'isoWeekYear'
+	        },
+
+	        // format function strings
+	        formatFunctions = {},
+
+	        // tokens to ordinalize and pad
+	        ordinalizeTokens = 'DDD w W M D d'.split(' '),
+	        paddedTokens = 'M D H h m s w W'.split(' '),
+
+	        formatTokenFunctions = {
+	            M    : function () {
+	                return this.month() + 1;
+	            },
+	            MMM  : function (format) {
+	                return this.lang().monthsShort(this, format);
+	            },
+	            MMMM : function (format) {
+	                return this.lang().months(this, format);
+	            },
+	            D    : function () {
+	                return this.date();
+	            },
+	            DDD  : function () {
+	                return this.dayOfYear();
+	            },
+	            d    : function () {
+	                return this.day();
+	            },
+	            dd   : function (format) {
+	                return this.lang().weekdaysMin(this, format);
+	            },
+	            ddd  : function (format) {
+	                return this.lang().weekdaysShort(this, format);
+	            },
+	            dddd : function (format) {
+	                return this.lang().weekdays(this, format);
+	            },
+	            w    : function () {
+	                return this.week();
+	            },
+	            W    : function () {
+	                return this.isoWeek();
+	            },
+	            YY   : function () {
+	                return leftZeroFill(this.year() % 100, 2);
+	            },
+	            YYYY : function () {
+	                return leftZeroFill(this.year(), 4);
+	            },
+	            YYYYY : function () {
+	                return leftZeroFill(this.year(), 5);
+	            },
+	            YYYYYY : function () {
+	                var y = this.year(), sign = y >= 0 ? '+' : '-';
+	                return sign + leftZeroFill(Math.abs(y), 6);
+	            },
+	            gg   : function () {
+	                return leftZeroFill(this.weekYear() % 100, 2);
+	            },
+	            gggg : function () {
+	                return leftZeroFill(this.weekYear(), 4);
+	            },
+	            ggggg : function () {
+	                return leftZeroFill(this.weekYear(), 5);
+	            },
+	            GG   : function () {
+	                return leftZeroFill(this.isoWeekYear() % 100, 2);
+	            },
+	            GGGG : function () {
+	                return leftZeroFill(this.isoWeekYear(), 4);
+	            },
+	            GGGGG : function () {
+	                return leftZeroFill(this.isoWeekYear(), 5);
+	            },
+	            e : function () {
+	                return this.weekday();
+	            },
+	            E : function () {
+	                return this.isoWeekday();
+	            },
+	            a    : function () {
+	                return this.lang().meridiem(this.hours(), this.minutes(), true);
+	            },
+	            A    : function () {
+	                return this.lang().meridiem(this.hours(), this.minutes(), false);
+	            },
+	            H    : function () {
+	                return this.hours();
+	            },
+	            h    : function () {
+	                return this.hours() % 12 || 12;
+	            },
+	            m    : function () {
+	                return this.minutes();
+	            },
+	            s    : function () {
+	                return this.seconds();
+	            },
+	            S    : function () {
+	                return toInt(this.milliseconds() / 100);
+	            },
+	            SS   : function () {
+	                return leftZeroFill(toInt(this.milliseconds() / 10), 2);
+	            },
+	            SSS  : function () {
+	                return leftZeroFill(this.milliseconds(), 3);
+	            },
+	            SSSS : function () {
+	                return leftZeroFill(this.milliseconds(), 3);
+	            },
+	            Z    : function () {
+	                var a = -this.zone(),
+	                    b = "+";
+	                if (a < 0) {
+	                    a = -a;
+	                    b = "-";
+	                }
+	                return b + leftZeroFill(toInt(a / 60), 2) + ":" + leftZeroFill(toInt(a) % 60, 2);
+	            },
+	            ZZ   : function () {
+	                var a = -this.zone(),
+	                    b = "+";
+	                if (a < 0) {
+	                    a = -a;
+	                    b = "-";
+	                }
+	                return b + leftZeroFill(toInt(a / 60), 2) + leftZeroFill(toInt(a) % 60, 2);
+	            },
+	            z : function () {
+	                return this.zoneAbbr();
+	            },
+	            zz : function () {
+	                return this.zoneName();
+	            },
+	            X    : function () {
+	                return this.unix();
+	            },
+	            Q : function () {
+	                return this.quarter();
+	            }
+	        },
+
+	        lists = ['months', 'monthsShort', 'weekdays', 'weekdaysShort', 'weekdaysMin'];
+
+	    function defaultParsingFlags() {
+	        // We need to deep clone this object, and es5 standard is not very
+	        // helpful.
+	        return {
+	            empty : false,
+	            unusedTokens : [],
+	            unusedInput : [],
+	            overflow : -2,
+	            charsLeftOver : 0,
+	            nullInput : false,
+	            invalidMonth : null,
+	            invalidFormat : false,
+	            userInvalidated : false,
+	            iso: false
+	        };
+	    }
+
+	    function deprecate(msg, fn) {
+	        var firstTime = true;
+	        function printMsg() {
+	            if (moment.suppressDeprecationWarnings === false &&
+	                    typeof console !== 'undefined' && console.warn) {
+	                console.warn("Deprecation warning: " + msg);
+	            }
+	        }
+	        return extend(function () {
+	            if (firstTime) {
+	                printMsg();
+	                firstTime = false;
+	            }
+	            return fn.apply(this, arguments);
+	        }, fn);
+	    }
+
+	    function padToken(func, count) {
+	        return function (a) {
+	            return leftZeroFill(func.call(this, a), count);
+	        };
+	    }
+	    function ordinalizeToken(func, period) {
+	        return function (a) {
+	            return this.lang().ordinal(func.call(this, a), period);
+	        };
+	    }
+
+	    while (ordinalizeTokens.length) {
+	        i = ordinalizeTokens.pop();
+	        formatTokenFunctions[i + 'o'] = ordinalizeToken(formatTokenFunctions[i], i);
+	    }
+	    while (paddedTokens.length) {
+	        i = paddedTokens.pop();
+	        formatTokenFunctions[i + i] = padToken(formatTokenFunctions[i], 2);
+	    }
+	    formatTokenFunctions.DDDD = padToken(formatTokenFunctions.DDD, 3);
+
+
+	    /************************************
+	        Constructors
+	    ************************************/
+
+	    function Language() {
+
+	    }
+
+	    // Moment prototype object
+	    function Moment(config) {
+	        checkOverflow(config);
+	        extend(this, config);
+	    }
+
+	    // Duration Constructor
+	    function Duration(duration) {
+	        var normalizedInput = normalizeObjectUnits(duration),
+	            years = normalizedInput.year || 0,
+	            quarters = normalizedInput.quarter || 0,
+	            months = normalizedInput.month || 0,
+	            weeks = normalizedInput.week || 0,
+	            days = normalizedInput.day || 0,
+	            hours = normalizedInput.hour || 0,
+	            minutes = normalizedInput.minute || 0,
+	            seconds = normalizedInput.second || 0,
+	            milliseconds = normalizedInput.millisecond || 0;
+
+	        // representation for dateAddRemove
+	        this._milliseconds = +milliseconds +
+	            seconds * 1e3 + // 1000
+	            minutes * 6e4 + // 1000 * 60
+	            hours * 36e5; // 1000 * 60 * 60
+	        // Because of dateAddRemove treats 24 hours as different from a
+	        // day when working around DST, we need to store them separately
+	        this._days = +days +
+	            weeks * 7;
+	        // It is impossible translate months into days without knowing
+	        // which months you are are talking about, so we have to store
+	        // it separately.
+	        this._months = +months +
+	            quarters * 3 +
+	            years * 12;
+
+	        this._data = {};
+
+	        this._bubble();
+	    }
+
+	    /************************************
+	        Helpers
+	    ************************************/
+
+
+	    function extend(a, b) {
+	        for (var i in b) {
+	            if (b.hasOwnProperty(i)) {
+	                a[i] = b[i];
+	            }
+	        }
+
+	        if (b.hasOwnProperty("toString")) {
+	            a.toString = b.toString;
+	        }
+
+	        if (b.hasOwnProperty("valueOf")) {
+	            a.valueOf = b.valueOf;
+	        }
+
+	        return a;
+	    }
+
+	    function cloneMoment(m) {
+	        var result = {}, i;
+	        for (i in m) {
+	            if (m.hasOwnProperty(i) && momentProperties.hasOwnProperty(i)) {
+	                result[i] = m[i];
+	            }
+	        }
+
+	        return result;
+	    }
+
+	    function absRound(number) {
+	        if (number < 0) {
+	            return Math.ceil(number);
+	        } else {
+	            return Math.floor(number);
+	        }
+	    }
+
+	    // left zero fill a number
+	    // see http://jsperf.com/left-zero-filling for performance comparison
+	    function leftZeroFill(number, targetLength, forceSign) {
+	        var output = '' + Math.abs(number),
+	            sign = number >= 0;
+
+	        while (output.length < targetLength) {
+	            output = '0' + output;
+	        }
+	        return (sign ? (forceSign ? '+' : '') : '-') + output;
+	    }
+
+	    // helper function for _.addTime and _.subtractTime
+	    function addOrSubtractDurationFromMoment(mom, duration, isAdding, updateOffset) {
+	        var milliseconds = duration._milliseconds,
+	            days = duration._days,
+	            months = duration._months;
+	        updateOffset = updateOffset == null ? true : updateOffset;
+
+	        if (milliseconds) {
+	            mom._d.setTime(+mom._d + milliseconds * isAdding);
+	        }
+	        if (days) {
+	            rawSetter(mom, 'Date', rawGetter(mom, 'Date') + days * isAdding);
+	        }
+	        if (months) {
+	            rawMonthSetter(mom, rawGetter(mom, 'Month') + months * isAdding);
+	        }
+	        if (updateOffset) {
+	            moment.updateOffset(mom, days || months);
+	        }
+	    }
+
+	    // check if is an array
+	    function isArray(input) {
+	        return Object.prototype.toString.call(input) === '[object Array]';
+	    }
+
+	    function isDate(input) {
+	        return  Object.prototype.toString.call(input) === '[object Date]' ||
+	                input instanceof Date;
+	    }
+
+	    // compare two arrays, return the number of differences
+	    function compareArrays(array1, array2, dontConvert) {
+	        var len = Math.min(array1.length, array2.length),
+	            lengthDiff = Math.abs(array1.length - array2.length),
+	            diffs = 0,
+	            i;
+	        for (i = 0; i < len; i++) {
+	            if ((dontConvert && array1[i] !== array2[i]) ||
+	                (!dontConvert && toInt(array1[i]) !== toInt(array2[i]))) {
+	                diffs++;
+	            }
+	        }
+	        return diffs + lengthDiff;
+	    }
+
+	    function normalizeUnits(units) {
+	        if (units) {
+	            var lowered = units.toLowerCase().replace(/(.)s$/, '$1');
+	            units = unitAliases[units] || camelFunctions[lowered] || lowered;
+	        }
+	        return units;
+	    }
+
+	    function normalizeObjectUnits(inputObject) {
+	        var normalizedInput = {},
+	            normalizedProp,
+	            prop;
+
+	        for (prop in inputObject) {
+	            if (inputObject.hasOwnProperty(prop)) {
+	                normalizedProp = normalizeUnits(prop);
+	                if (normalizedProp) {
+	                    normalizedInput[normalizedProp] = inputObject[prop];
+	                }
+	            }
+	        }
+
+	        return normalizedInput;
+	    }
+
+	    function makeList(field) {
+	        var count, setter;
+
+	        if (field.indexOf('week') === 0) {
+	            count = 7;
+	            setter = 'day';
+	        }
+	        else if (field.indexOf('month') === 0) {
+	            count = 12;
+	            setter = 'month';
+	        }
+	        else {
+	            return;
+	        }
+
+	        moment[field] = function (format, index) {
+	            var i, getter,
+	                method = moment.fn._lang[field],
+	                results = [];
+
+	            if (typeof format === 'number') {
+	                index = format;
+	                format = undefined;
+	            }
+
+	            getter = function (i) {
+	                var m = moment().utc().set(setter, i);
+	                return method.call(moment.fn._lang, m, format || '');
+	            };
+
+	            if (index != null) {
+	                return getter(index);
+	            }
+	            else {
+	                for (i = 0; i < count; i++) {
+	                    results.push(getter(i));
+	                }
+	                return results;
+	            }
+	        };
+	    }
+
+	    function toInt(argumentForCoercion) {
+	        var coercedNumber = +argumentForCoercion,
+	            value = 0;
+
+	        if (coercedNumber !== 0 && isFinite(coercedNumber)) {
+	            if (coercedNumber >= 0) {
+	                value = Math.floor(coercedNumber);
+	            } else {
+	                value = Math.ceil(coercedNumber);
+	            }
+	        }
+
+	        return value;
+	    }
+
+	    function daysInMonth(year, month) {
+	        return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+	    }
+
+	    function weeksInYear(year, dow, doy) {
+	        return weekOfYear(moment([year, 11, 31 + dow - doy]), dow, doy).week;
+	    }
+
+	    function daysInYear(year) {
+	        return isLeapYear(year) ? 366 : 365;
+	    }
+
+	    function isLeapYear(year) {
+	        return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+	    }
+
+	    function checkOverflow(m) {
+	        var overflow;
+	        if (m._a && m._pf.overflow === -2) {
+	            overflow =
+	                m._a[MONTH] < 0 || m._a[MONTH] > 11 ? MONTH :
+	                m._a[DATE] < 1 || m._a[DATE] > daysInMonth(m._a[YEAR], m._a[MONTH]) ? DATE :
+	                m._a[HOUR] < 0 || m._a[HOUR] > 23 ? HOUR :
+	                m._a[MINUTE] < 0 || m._a[MINUTE] > 59 ? MINUTE :
+	                m._a[SECOND] < 0 || m._a[SECOND] > 59 ? SECOND :
+	                m._a[MILLISECOND] < 0 || m._a[MILLISECOND] > 999 ? MILLISECOND :
+	                -1;
+
+	            if (m._pf._overflowDayOfYear && (overflow < YEAR || overflow > DATE)) {
+	                overflow = DATE;
+	            }
+
+	            m._pf.overflow = overflow;
+	        }
+	    }
+
+	    function isValid(m) {
+	        if (m._isValid == null) {
+	            m._isValid = !isNaN(m._d.getTime()) &&
+	                m._pf.overflow < 0 &&
+	                !m._pf.empty &&
+	                !m._pf.invalidMonth &&
+	                !m._pf.nullInput &&
+	                !m._pf.invalidFormat &&
+	                !m._pf.userInvalidated;
+
+	            if (m._strict) {
+	                m._isValid = m._isValid &&
+	                    m._pf.charsLeftOver === 0 &&
+	                    m._pf.unusedTokens.length === 0;
+	            }
+	        }
+	        return m._isValid;
+	    }
+
+	    function normalizeLanguage(key) {
+	        return key ? key.toLowerCase().replace('_', '-') : key;
+	    }
+
+	    // Return a moment from input, that is local/utc/zone equivalent to model.
+	    function makeAs(input, model) {
+	        return model._isUTC ? moment(input).zone(model._offset || 0) :
+	            moment(input).local();
+	    }
+
+	    /************************************
+	        Languages
+	    ************************************/
+
+
+	    extend(Language.prototype, {
+
+	        set : function (config) {
+	            var prop, i;
+	            for (i in config) {
+	                prop = config[i];
+	                if (typeof prop === 'function') {
+	                    this[i] = prop;
+	                } else {
+	                    this['_' + i] = prop;
+	                }
+	            }
+	        },
+
+	        _months : "January_February_March_April_May_June_July_August_September_October_November_December".split("_"),
+	        months : function (m) {
+	            return this._months[m.month()];
+	        },
+
+	        _monthsShort : "Jan_Feb_Mar_Apr_May_Jun_Jul_Aug_Sep_Oct_Nov_Dec".split("_"),
+	        monthsShort : function (m) {
+	            return this._monthsShort[m.month()];
+	        },
+
+	        monthsParse : function (monthName) {
+	            var i, mom, regex;
+
+	            if (!this._monthsParse) {
+	                this._monthsParse = [];
+	            }
+
+	            for (i = 0; i < 12; i++) {
+	                // make the regex if we don't have it already
+	                if (!this._monthsParse[i]) {
+	                    mom = moment.utc([2000, i]);
+	                    regex = '^' + this.months(mom, '') + '|^' + this.monthsShort(mom, '');
+	                    this._monthsParse[i] = new RegExp(regex.replace('.', ''), 'i');
+	                }
+	                // test the regex
+	                if (this._monthsParse[i].test(monthName)) {
+	                    return i;
+	                }
+	            }
+	        },
+
+	        _weekdays : "Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),
+	        weekdays : function (m) {
+	            return this._weekdays[m.day()];
+	        },
+
+	        _weekdaysShort : "Sun_Mon_Tue_Wed_Thu_Fri_Sat".split("_"),
+	        weekdaysShort : function (m) {
+	            return this._weekdaysShort[m.day()];
+	        },
+
+	        _weekdaysMin : "Su_Mo_Tu_We_Th_Fr_Sa".split("_"),
+	        weekdaysMin : function (m) {
+	            return this._weekdaysMin[m.day()];
+	        },
+
+	        weekdaysParse : function (weekdayName) {
+	            var i, mom, regex;
+
+	            if (!this._weekdaysParse) {
+	                this._weekdaysParse = [];
+	            }
+
+	            for (i = 0; i < 7; i++) {
+	                // make the regex if we don't have it already
+	                if (!this._weekdaysParse[i]) {
+	                    mom = moment([2000, 1]).day(i);
+	                    regex = '^' + this.weekdays(mom, '') + '|^' + this.weekdaysShort(mom, '') + '|^' + this.weekdaysMin(mom, '');
+	                    this._weekdaysParse[i] = new RegExp(regex.replace('.', ''), 'i');
+	                }
+	                // test the regex
+	                if (this._weekdaysParse[i].test(weekdayName)) {
+	                    return i;
+	                }
+	            }
+	        },
+
+	        _longDateFormat : {
+	            LT : "h:mm A",
+	            L : "MM/DD/YYYY",
+	            LL : "MMMM D YYYY",
+	            LLL : "MMMM D YYYY LT",
+	            LLLL : "dddd, MMMM D YYYY LT"
+	        },
+	        longDateFormat : function (key) {
+	            var output = this._longDateFormat[key];
+	            if (!output && this._longDateFormat[key.toUpperCase()]) {
+	                output = this._longDateFormat[key.toUpperCase()].replace(/MMMM|MM|DD|dddd/g, function (val) {
+	                    return val.slice(1);
+	                });
+	                this._longDateFormat[key] = output;
+	            }
+	            return output;
+	        },
+
+	        isPM : function (input) {
+	            // IE8 Quirks Mode & IE7 Standards Mode do not allow accessing strings like arrays
+	            // Using charAt should be more compatible.
+	            return ((input + '').toLowerCase().charAt(0) === 'p');
+	        },
+
+	        _meridiemParse : /[ap]\.?m?\.?/i,
+	        meridiem : function (hours, minutes, isLower) {
+	            if (hours > 11) {
+	                return isLower ? 'pm' : 'PM';
+	            } else {
+	                return isLower ? 'am' : 'AM';
+	            }
+	        },
+
+	        _calendar : {
+	            sameDay : '[Today at] LT',
+	            nextDay : '[Tomorrow at] LT',
+	            nextWeek : 'dddd [at] LT',
+	            lastDay : '[Yesterday at] LT',
+	            lastWeek : '[Last] dddd [at] LT',
+	            sameElse : 'L'
+	        },
+	        calendar : function (key, mom) {
+	            var output = this._calendar[key];
+	            return typeof output === 'function' ? output.apply(mom) : output;
+	        },
+
+	        _relativeTime : {
+	            future : "in %s",
+	            past : "%s ago",
+	            s : "a few seconds",
+	            m : "a minute",
+	            mm : "%d minutes",
+	            h : "an hour",
+	            hh : "%d hours",
+	            d : "a day",
+	            dd : "%d days",
+	            M : "a month",
+	            MM : "%d months",
+	            y : "a year",
+	            yy : "%d years"
+	        },
+	        relativeTime : function (number, withoutSuffix, string, isFuture) {
+	            var output = this._relativeTime[string];
+	            return (typeof output === 'function') ?
+	                output(number, withoutSuffix, string, isFuture) :
+	                output.replace(/%d/i, number);
+	        },
+	        pastFuture : function (diff, output) {
+	            var format = this._relativeTime[diff > 0 ? 'future' : 'past'];
+	            return typeof format === 'function' ? format(output) : format.replace(/%s/i, output);
+	        },
+
+	        ordinal : function (number) {
+	            return this._ordinal.replace("%d", number);
+	        },
+	        _ordinal : "%d",
+
+	        preparse : function (string) {
+	            return string;
+	        },
+
+	        postformat : function (string) {
+	            return string;
+	        },
+
+	        week : function (mom) {
+	            return weekOfYear(mom, this._week.dow, this._week.doy).week;
+	        },
+
+	        _week : {
+	            dow : 0, // Sunday is the first day of the week.
+	            doy : 6  // The week that contains Jan 1st is the first week of the year.
+	        },
+
+	        _invalidDate: 'Invalid date',
+	        invalidDate: function () {
+	            return this._invalidDate;
+	        }
+	    });
+
+	    // Loads a language definition into the `languages` cache.  The function
+	    // takes a key and optionally values.  If not in the browser and no values
+	    // are provided, it will load the language file module.  As a convenience,
+	    // this function also returns the language values.
+	    function loadLang(key, values) {
+	        values.abbr = key;
+	        if (!languages[key]) {
+	            languages[key] = new Language();
+	        }
+	        languages[key].set(values);
+	        return languages[key];
+	    }
+
+	    // Remove a language from the `languages` cache. Mostly useful in tests.
+	    function unloadLang(key) {
+	        delete languages[key];
+	    }
+
+	    // Determines which language definition to use and returns it.
+	    //
+	    // With no parameters, it will return the global language.  If you
+	    // pass in a language key, such as 'en', it will return the
+	    // definition for 'en', so long as 'en' has already been loaded using
+	    // moment.lang.
+	    function getLangDefinition(key) {
+	        var i = 0, j, lang, next, split,
+	            get = function (k) {
+	                if (!languages[k] && hasModule) {
+	                    try {
+	                        __webpack_require__(195)("./" + k);
+	                    } catch (e) { }
+	                }
+	                return languages[k];
+	            };
+
+	        if (!key) {
+	            return moment.fn._lang;
+	        }
+
+	        if (!isArray(key)) {
+	            //short-circuit everything else
+	            lang = get(key);
+	            if (lang) {
+	                return lang;
+	            }
+	            key = [key];
+	        }
+
+	        //pick the language from the array
+	        //try ['en-au', 'en-gb'] as 'en-au', 'en-gb', 'en', as in move through the list trying each
+	        //substring from most specific to least, but move to the next array item if it's a more specific variant than the current root
+	        while (i < key.length) {
+	            split = normalizeLanguage(key[i]).split('-');
+	            j = split.length;
+	            next = normalizeLanguage(key[i + 1]);
+	            next = next ? next.split('-') : null;
+	            while (j > 0) {
+	                lang = get(split.slice(0, j).join('-'));
+	                if (lang) {
+	                    return lang;
+	                }
+	                if (next && next.length >= j && compareArrays(split, next, true) >= j - 1) {
+	                    //the next array item is better than a shallower substring of this one
+	                    break;
+	                }
+	                j--;
+	            }
+	            i++;
+	        }
+	        return moment.fn._lang;
+	    }
+
+	    /************************************
+	        Formatting
+	    ************************************/
+
+
+	    function removeFormattingTokens(input) {
+	        if (input.match(/\[[\s\S]/)) {
+	            return input.replace(/^\[|\]$/g, "");
+	        }
+	        return input.replace(/\\/g, "");
+	    }
+
+	    function makeFormatFunction(format) {
+	        var array = format.match(formattingTokens), i, length;
+
+	        for (i = 0, length = array.length; i < length; i++) {
+	            if (formatTokenFunctions[array[i]]) {
+	                array[i] = formatTokenFunctions[array[i]];
+	            } else {
+	                array[i] = removeFormattingTokens(array[i]);
+	            }
+	        }
+
+	        return function (mom) {
+	            var output = "";
+	            for (i = 0; i < length; i++) {
+	                output += array[i] instanceof Function ? array[i].call(mom, format) : array[i];
+	            }
+	            return output;
+	        };
+	    }
+
+	    // format date using native date object
+	    function formatMoment(m, format) {
+
+	        if (!m.isValid()) {
+	            return m.lang().invalidDate();
+	        }
+
+	        format = expandFormat(format, m.lang());
+
+	        if (!formatFunctions[format]) {
+	            formatFunctions[format] = makeFormatFunction(format);
+	        }
+
+	        return formatFunctions[format](m);
+	    }
+
+	    function expandFormat(format, lang) {
+	        var i = 5;
+
+	        function replaceLongDateFormatTokens(input) {
+	            return lang.longDateFormat(input) || input;
+	        }
+
+	        localFormattingTokens.lastIndex = 0;
+	        while (i >= 0 && localFormattingTokens.test(format)) {
+	            format = format.replace(localFormattingTokens, replaceLongDateFormatTokens);
+	            localFormattingTokens.lastIndex = 0;
+	            i -= 1;
+	        }
+
+	        return format;
+	    }
+
+
+	    /************************************
+	        Parsing
+	    ************************************/
+
+
+	    // get the regex to find the next token
+	    function getParseRegexForToken(token, config) {
+	        var a, strict = config._strict;
+	        switch (token) {
+	        case 'Q':
+	            return parseTokenOneDigit;
+	        case 'DDDD':
+	            return parseTokenThreeDigits;
+	        case 'YYYY':
+	        case 'GGGG':
+	        case 'gggg':
+	            return strict ? parseTokenFourDigits : parseTokenOneToFourDigits;
+	        case 'Y':
+	        case 'G':
+	        case 'g':
+	            return parseTokenSignedNumber;
+	        case 'YYYYYY':
+	        case 'YYYYY':
+	        case 'GGGGG':
+	        case 'ggggg':
+	            return strict ? parseTokenSixDigits : parseTokenOneToSixDigits;
+	        case 'S':
+	            if (strict) { return parseTokenOneDigit; }
+	            /* falls through */
+	        case 'SS':
+	            if (strict) { return parseTokenTwoDigits; }
+	            /* falls through */
+	        case 'SSS':
+	            if (strict) { return parseTokenThreeDigits; }
+	            /* falls through */
+	        case 'DDD':
+	            return parseTokenOneToThreeDigits;
+	        case 'MMM':
+	        case 'MMMM':
+	        case 'dd':
+	        case 'ddd':
+	        case 'dddd':
+	            return parseTokenWord;
+	        case 'a':
+	        case 'A':
+	            return getLangDefinition(config._l)._meridiemParse;
+	        case 'X':
+	            return parseTokenTimestampMs;
+	        case 'Z':
+	        case 'ZZ':
+	            return parseTokenTimezone;
+	        case 'T':
+	            return parseTokenT;
+	        case 'SSSS':
+	            return parseTokenDigits;
+	        case 'MM':
+	        case 'DD':
+	        case 'YY':
+	        case 'GG':
+	        case 'gg':
+	        case 'HH':
+	        case 'hh':
+	        case 'mm':
+	        case 'ss':
+	        case 'ww':
+	        case 'WW':
+	            return strict ? parseTokenTwoDigits : parseTokenOneOrTwoDigits;
+	        case 'M':
+	        case 'D':
+	        case 'd':
+	        case 'H':
+	        case 'h':
+	        case 'm':
+	        case 's':
+	        case 'w':
+	        case 'W':
+	        case 'e':
+	        case 'E':
+	            return parseTokenOneOrTwoDigits;
+	        case 'Do':
+	            return parseTokenOrdinal;
+	        default :
+	            a = new RegExp(regexpEscape(unescapeFormat(token.replace('\\', '')), "i"));
+	            return a;
+	        }
+	    }
+
+	    function timezoneMinutesFromString(string) {
+	        string = string || "";
+	        var possibleTzMatches = (string.match(parseTokenTimezone) || []),
+	            tzChunk = possibleTzMatches[possibleTzMatches.length - 1] || [],
+	            parts = (tzChunk + '').match(parseTimezoneChunker) || ['-', 0, 0],
+	            minutes = +(parts[1] * 60) + toInt(parts[2]);
+
+	        return parts[0] === '+' ? -minutes : minutes;
+	    }
+
+	    // function to convert string input to date
+	    function addTimeToArrayFromToken(token, input, config) {
+	        var a, datePartArray = config._a;
+
+	        switch (token) {
+	        // QUARTER
+	        case 'Q':
+	            if (input != null) {
+	                datePartArray[MONTH] = (toInt(input) - 1) * 3;
+	            }
+	            break;
+	        // MONTH
+	        case 'M' : // fall through to MM
+	        case 'MM' :
+	            if (input != null) {
+	                datePartArray[MONTH] = toInt(input) - 1;
+	            }
+	            break;
+	        case 'MMM' : // fall through to MMMM
+	        case 'MMMM' :
+	            a = getLangDefinition(config._l).monthsParse(input);
+	            // if we didn't find a month name, mark the date as invalid.
+	            if (a != null) {
+	                datePartArray[MONTH] = a;
+	            } else {
+	                config._pf.invalidMonth = input;
+	            }
+	            break;
+	        // DAY OF MONTH
+	        case 'D' : // fall through to DD
+	        case 'DD' :
+	            if (input != null) {
+	                datePartArray[DATE] = toInt(input);
+	            }
+	            break;
+	        case 'Do' :
+	            if (input != null) {
+	                datePartArray[DATE] = toInt(parseInt(input, 10));
+	            }
+	            break;
+	        // DAY OF YEAR
+	        case 'DDD' : // fall through to DDDD
+	        case 'DDDD' :
+	            if (input != null) {
+	                config._dayOfYear = toInt(input);
+	            }
+
+	            break;
+	        // YEAR
+	        case 'YY' :
+	            datePartArray[YEAR] = moment.parseTwoDigitYear(input);
+	            break;
+	        case 'YYYY' :
+	        case 'YYYYY' :
+	        case 'YYYYYY' :
+	            datePartArray[YEAR] = toInt(input);
+	            break;
+	        // AM / PM
+	        case 'a' : // fall through to A
+	        case 'A' :
+	            config._isPm = getLangDefinition(config._l).isPM(input);
+	            break;
+	        // 24 HOUR
+	        case 'H' : // fall through to hh
+	        case 'HH' : // fall through to hh
+	        case 'h' : // fall through to hh
+	        case 'hh' :
+	            datePartArray[HOUR] = toInt(input);
+	            break;
+	        // MINUTE
+	        case 'm' : // fall through to mm
+	        case 'mm' :
+	            datePartArray[MINUTE] = toInt(input);
+	            break;
+	        // SECOND
+	        case 's' : // fall through to ss
+	        case 'ss' :
+	            datePartArray[SECOND] = toInt(input);
+	            break;
+	        // MILLISECOND
+	        case 'S' :
+	        case 'SS' :
+	        case 'SSS' :
+	        case 'SSSS' :
+	            datePartArray[MILLISECOND] = toInt(('0.' + input) * 1000);
+	            break;
+	        // UNIX TIMESTAMP WITH MS
+	        case 'X':
+	            config._d = new Date(parseFloat(input) * 1000);
+	            break;
+	        // TIMEZONE
+	        case 'Z' : // fall through to ZZ
+	        case 'ZZ' :
+	            config._useUTC = true;
+	            config._tzm = timezoneMinutesFromString(input);
+	            break;
+	        case 'w':
+	        case 'ww':
+	        case 'W':
+	        case 'WW':
+	        case 'd':
+	        case 'dd':
+	        case 'ddd':
+	        case 'dddd':
+	        case 'e':
+	        case 'E':
+	            token = token.substr(0, 1);
+	            /* falls through */
+	        case 'gg':
+	        case 'gggg':
+	        case 'GG':
+	        case 'GGGG':
+	        case 'GGGGG':
+	            token = token.substr(0, 2);
+	            if (input) {
+	                config._w = config._w || {};
+	                config._w[token] = input;
+	            }
+	            break;
+	        }
+	    }
+
+	    // convert an array to a date.
+	    // the array should mirror the parameters below
+	    // note: all values past the year are optional and will default to the lowest possible value.
+	    // [year, month, day , hour, minute, second, millisecond]
+	    function dateFromConfig(config) {
+	        var i, date, input = [], currentDate,
+	            yearToUse, fixYear, w, temp, lang, weekday, week;
+
+	        if (config._d) {
+	            return;
+	        }
+
+	        currentDate = currentDateArray(config);
+
+	        //compute day of the year from weeks and weekdays
+	        if (config._w && config._a[DATE] == null && config._a[MONTH] == null) {
+	            fixYear = function (val) {
+	                var intVal = parseInt(val, 10);
+	                return val ?
+	                  (val.length < 3 ? (intVal > 68 ? 1900 + intVal : 2000 + intVal) : intVal) :
+	                  (config._a[YEAR] == null ? moment().weekYear() : config._a[YEAR]);
+	            };
+
+	            w = config._w;
+	            if (w.GG != null || w.W != null || w.E != null) {
+	                temp = dayOfYearFromWeeks(fixYear(w.GG), w.W || 1, w.E, 4, 1);
+	            }
+	            else {
+	                lang = getLangDefinition(config._l);
+	                weekday = w.d != null ?  parseWeekday(w.d, lang) :
+	                  (w.e != null ?  parseInt(w.e, 10) + lang._week.dow : 0);
+
+	                week = parseInt(w.w, 10) || 1;
+
+	                //if we're parsing 'd', then the low day numbers may be next week
+	                if (w.d != null && weekday < lang._week.dow) {
+	                    week++;
+	                }
+
+	                temp = dayOfYearFromWeeks(fixYear(w.gg), week, weekday, lang._week.doy, lang._week.dow);
+	            }
+
+	            config._a[YEAR] = temp.year;
+	            config._dayOfYear = temp.dayOfYear;
+	        }
+
+	        //if the day of the year is set, figure out what it is
+	        if (config._dayOfYear) {
+	            yearToUse = config._a[YEAR] == null ? currentDate[YEAR] : config._a[YEAR];
+
+	            if (config._dayOfYear > daysInYear(yearToUse)) {
+	                config._pf._overflowDayOfYear = true;
+	            }
+
+	            date = makeUTCDate(yearToUse, 0, config._dayOfYear);
+	            config._a[MONTH] = date.getUTCMonth();
+	            config._a[DATE] = date.getUTCDate();
+	        }
+
+	        // Default to current date.
+	        // * if no year, month, day of month are given, default to today
+	        // * if day of month is given, default month and year
+	        // * if month is given, default only year
+	        // * if year is given, don't default anything
+	        for (i = 0; i < 3 && config._a[i] == null; ++i) {
+	            config._a[i] = input[i] = currentDate[i];
+	        }
+
+	        // Zero out whatever was not defaulted, including time
+	        for (; i < 7; i++) {
+	            config._a[i] = input[i] = (config._a[i] == null) ? (i === 2 ? 1 : 0) : config._a[i];
+	        }
+
+	        // add the offsets to the time to be parsed so that we can have a clean array for checking isValid
+	        input[HOUR] += toInt((config._tzm || 0) / 60);
+	        input[MINUTE] += toInt((config._tzm || 0) % 60);
+
+	        config._d = (config._useUTC ? makeUTCDate : makeDate).apply(null, input);
+	    }
+
+	    function dateFromObject(config) {
+	        var normalizedInput;
+
+	        if (config._d) {
+	            return;
+	        }
+
+	        normalizedInput = normalizeObjectUnits(config._i);
+	        config._a = [
+	            normalizedInput.year,
+	            normalizedInput.month,
+	            normalizedInput.day,
+	            normalizedInput.hour,
+	            normalizedInput.minute,
+	            normalizedInput.second,
+	            normalizedInput.millisecond
+	        ];
+
+	        dateFromConfig(config);
+	    }
+
+	    function currentDateArray(config) {
+	        var now = new Date();
+	        if (config._useUTC) {
+	            return [
+	                now.getUTCFullYear(),
+	                now.getUTCMonth(),
+	                now.getUTCDate()
+	            ];
+	        } else {
+	            return [now.getFullYear(), now.getMonth(), now.getDate()];
+	        }
+	    }
+
+	    // date from string and format string
+	    function makeDateFromStringAndFormat(config) {
+
+	        config._a = [];
+	        config._pf.empty = true;
+
+	        // This array is used to make a Date, either with `new Date` or `Date.UTC`
+	        var lang = getLangDefinition(config._l),
+	            string = '' + config._i,
+	            i, parsedInput, tokens, token, skipped,
+	            stringLength = string.length,
+	            totalParsedInputLength = 0;
+
+	        tokens = expandFormat(config._f, lang).match(formattingTokens) || [];
+
+	        for (i = 0; i < tokens.length; i++) {
+	            token = tokens[i];
+	            parsedInput = (string.match(getParseRegexForToken(token, config)) || [])[0];
+	            if (parsedInput) {
+	                skipped = string.substr(0, string.indexOf(parsedInput));
+	                if (skipped.length > 0) {
+	                    config._pf.unusedInput.push(skipped);
+	                }
+	                string = string.slice(string.indexOf(parsedInput) + parsedInput.length);
+	                totalParsedInputLength += parsedInput.length;
+	            }
+	            // don't parse if it's not a known token
+	            if (formatTokenFunctions[token]) {
+	                if (parsedInput) {
+	                    config._pf.empty = false;
+	                }
+	                else {
+	                    config._pf.unusedTokens.push(token);
+	                }
+	                addTimeToArrayFromToken(token, parsedInput, config);
+	            }
+	            else if (config._strict && !parsedInput) {
+	                config._pf.unusedTokens.push(token);
+	            }
+	        }
+
+	        // add remaining unparsed input length to the string
+	        config._pf.charsLeftOver = stringLength - totalParsedInputLength;
+	        if (string.length > 0) {
+	            config._pf.unusedInput.push(string);
+	        }
+
+	        // handle am pm
+	        if (config._isPm && config._a[HOUR] < 12) {
+	            config._a[HOUR] += 12;
+	        }
+	        // if is 12 am, change hours to 0
+	        if (config._isPm === false && config._a[HOUR] === 12) {
+	            config._a[HOUR] = 0;
+	        }
+
+	        dateFromConfig(config);
+	        checkOverflow(config);
+	    }
+
+	    function unescapeFormat(s) {
+	        return s.replace(/\\(\[)|\\(\])|\[([^\]\[]*)\]|\\(.)/g, function (matched, p1, p2, p3, p4) {
+	            return p1 || p2 || p3 || p4;
+	        });
+	    }
+
+	    // Code from http://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
+	    function regexpEscape(s) {
+	        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+	    }
+
+	    // date from string and array of format strings
+	    function makeDateFromStringAndArray(config) {
+	        var tempConfig,
+	            bestMoment,
+
+	            scoreToBeat,
+	            i,
+	            currentScore;
+
+	        if (config._f.length === 0) {
+	            config._pf.invalidFormat = true;
+	            config._d = new Date(NaN);
+	            return;
+	        }
+
+	        for (i = 0; i < config._f.length; i++) {
+	            currentScore = 0;
+	            tempConfig = extend({}, config);
+	            tempConfig._pf = defaultParsingFlags();
+	            tempConfig._f = config._f[i];
+	            makeDateFromStringAndFormat(tempConfig);
+
+	            if (!isValid(tempConfig)) {
+	                continue;
+	            }
+
+	            // if there is any input that was not parsed add a penalty for that format
+	            currentScore += tempConfig._pf.charsLeftOver;
+
+	            //or tokens
+	            currentScore += tempConfig._pf.unusedTokens.length * 10;
+
+	            tempConfig._pf.score = currentScore;
+
+	            if (scoreToBeat == null || currentScore < scoreToBeat) {
+	                scoreToBeat = currentScore;
+	                bestMoment = tempConfig;
+	            }
+	        }
+
+	        extend(config, bestMoment || tempConfig);
+	    }
+
+	    // date from iso format
+	    function makeDateFromString(config) {
+	        var i, l,
+	            string = config._i,
+	            match = isoRegex.exec(string);
+
+	        if (match) {
+	            config._pf.iso = true;
+	            for (i = 0, l = isoDates.length; i < l; i++) {
+	                if (isoDates[i][1].exec(string)) {
+	                    // match[5] should be "T" or undefined
+	                    config._f = isoDates[i][0] + (match[6] || " ");
+	                    break;
+	                }
+	            }
+	            for (i = 0, l = isoTimes.length; i < l; i++) {
+	                if (isoTimes[i][1].exec(string)) {
+	                    config._f += isoTimes[i][0];
+	                    break;
+	                }
+	            }
+	            if (string.match(parseTokenTimezone)) {
+	                config._f += "Z";
+	            }
+	            makeDateFromStringAndFormat(config);
+	        }
+	        else {
+	            moment.createFromInputFallback(config);
+	        }
+	    }
+
+	    function makeDateFromInput(config) {
+	        var input = config._i,
+	            matched = aspNetJsonRegex.exec(input);
+
+	        if (input === undefined) {
+	            config._d = new Date();
+	        } else if (matched) {
+	            config._d = new Date(+matched[1]);
+	        } else if (typeof input === 'string') {
+	            makeDateFromString(config);
+	        } else if (isArray(input)) {
+	            config._a = input.slice(0);
+	            dateFromConfig(config);
+	        } else if (isDate(input)) {
+	            config._d = new Date(+input);
+	        } else if (typeof(input) === 'object') {
+	            dateFromObject(config);
+	        } else if (typeof(input) === 'number') {
+	            // from milliseconds
+	            config._d = new Date(input);
+	        } else {
+	            moment.createFromInputFallback(config);
+	        }
+	    }
+
+	    function makeDate(y, m, d, h, M, s, ms) {
+	        //can't just apply() to create a date:
+	        //http://stackoverflow.com/questions/181348/instantiating-a-javascript-object-by-calling-prototype-constructor-apply
+	        var date = new Date(y, m, d, h, M, s, ms);
+
+	        //the date constructor doesn't accept years < 1970
+	        if (y < 1970) {
+	            date.setFullYear(y);
+	        }
+	        return date;
+	    }
+
+	    function makeUTCDate(y) {
+	        var date = new Date(Date.UTC.apply(null, arguments));
+	        if (y < 1970) {
+	            date.setUTCFullYear(y);
+	        }
+	        return date;
+	    }
+
+	    function parseWeekday(input, language) {
+	        if (typeof input === 'string') {
+	            if (!isNaN(input)) {
+	                input = parseInt(input, 10);
+	            }
+	            else {
+	                input = language.weekdaysParse(input);
+	                if (typeof input !== 'number') {
+	                    return null;
+	                }
+	            }
+	        }
+	        return input;
+	    }
+
+	    /************************************
+	        Relative Time
+	    ************************************/
+
+
+	    // helper function for moment.fn.from, moment.fn.fromNow, and moment.duration.fn.humanize
+	    function substituteTimeAgo(string, number, withoutSuffix, isFuture, lang) {
+	        return lang.relativeTime(number || 1, !!withoutSuffix, string, isFuture);
+	    }
+
+	    function relativeTime(milliseconds, withoutSuffix, lang) {
+	        var seconds = round(Math.abs(milliseconds) / 1000),
+	            minutes = round(seconds / 60),
+	            hours = round(minutes / 60),
+	            days = round(hours / 24),
+	            years = round(days / 365),
+	            args = seconds < 45 && ['s', seconds] ||
+	                minutes === 1 && ['m'] ||
+	                minutes < 45 && ['mm', minutes] ||
+	                hours === 1 && ['h'] ||
+	                hours < 22 && ['hh', hours] ||
+	                days === 1 && ['d'] ||
+	                days <= 25 && ['dd', days] ||
+	                days <= 45 && ['M'] ||
+	                days < 345 && ['MM', round(days / 30)] ||
+	                years === 1 && ['y'] || ['yy', years];
+	        args[2] = withoutSuffix;
+	        args[3] = milliseconds > 0;
+	        args[4] = lang;
+	        return substituteTimeAgo.apply({}, args);
+	    }
+
+
+	    /************************************
+	        Week of Year
+	    ************************************/
+
+
+	    // firstDayOfWeek       0 = sun, 6 = sat
+	    //                      the day of the week that starts the week
+	    //                      (usually sunday or monday)
+	    // firstDayOfWeekOfYear 0 = sun, 6 = sat
+	    //                      the first week is the week that contains the first
+	    //                      of this day of the week
+	    //                      (eg. ISO weeks use thursday (4))
+	    function weekOfYear(mom, firstDayOfWeek, firstDayOfWeekOfYear) {
+	        var end = firstDayOfWeekOfYear - firstDayOfWeek,
+	            daysToDayOfWeek = firstDayOfWeekOfYear - mom.day(),
+	            adjustedMoment;
+
+
+	        if (daysToDayOfWeek > end) {
+	            daysToDayOfWeek -= 7;
+	        }
+
+	        if (daysToDayOfWeek < end - 7) {
+	            daysToDayOfWeek += 7;
+	        }
+
+	        adjustedMoment = moment(mom).add('d', daysToDayOfWeek);
+	        return {
+	            week: Math.ceil(adjustedMoment.dayOfYear() / 7),
+	            year: adjustedMoment.year()
+	        };
+	    }
+
+	    //http://en.wikipedia.org/wiki/ISO_week_date#Calculating_a_date_given_the_year.2C_week_number_and_weekday
+	    function dayOfYearFromWeeks(year, week, weekday, firstDayOfWeekOfYear, firstDayOfWeek) {
+	        var d = makeUTCDate(year, 0, 1).getUTCDay(), daysToAdd, dayOfYear;
+
+	        weekday = weekday != null ? weekday : firstDayOfWeek;
+	        daysToAdd = firstDayOfWeek - d + (d > firstDayOfWeekOfYear ? 7 : 0) - (d < firstDayOfWeek ? 7 : 0);
+	        dayOfYear = 7 * (week - 1) + (weekday - firstDayOfWeek) + daysToAdd + 1;
+
+	        return {
+	            year: dayOfYear > 0 ? year : year - 1,
+	            dayOfYear: dayOfYear > 0 ?  dayOfYear : daysInYear(year - 1) + dayOfYear
+	        };
+	    }
+
+	    /************************************
+	        Top Level Functions
+	    ************************************/
+
+	    function makeMoment(config) {
+	        var input = config._i,
+	            format = config._f;
+
+	        if (input === null || (format === undefined && input === '')) {
+	            return moment.invalid({nullInput: true});
+	        }
+
+	        if (typeof input === 'string') {
+	            config._i = input = getLangDefinition().preparse(input);
+	        }
+
+	        if (moment.isMoment(input)) {
+	            config = cloneMoment(input);
+
+	            config._d = new Date(+input._d);
+	        } else if (format) {
+	            if (isArray(format)) {
+	                makeDateFromStringAndArray(config);
+	            } else {
+	                makeDateFromStringAndFormat(config);
+	            }
+	        } else {
+	            makeDateFromInput(config);
+	        }
+
+	        return new Moment(config);
+	    }
+
+	    moment = function (input, format, lang, strict) {
+	        var c;
+
+	        if (typeof(lang) === "boolean") {
+	            strict = lang;
+	            lang = undefined;
+	        }
+	        // object construction must be done this way.
+	        // https://github.com/moment/moment/issues/1423
+	        c = {};
+	        c._isAMomentObject = true;
+	        c._i = input;
+	        c._f = format;
+	        c._l = lang;
+	        c._strict = strict;
+	        c._isUTC = false;
+	        c._pf = defaultParsingFlags();
+
+	        return makeMoment(c);
+	    };
+
+	    moment.suppressDeprecationWarnings = false;
+
+	    moment.createFromInputFallback = deprecate(
+	            "moment construction falls back to js Date. This is " +
+	            "discouraged and will be removed in upcoming major " +
+	            "release. Please refer to " +
+	            "https://github.com/moment/moment/issues/1407 for more info.",
+	            function (config) {
+	        config._d = new Date(config._i);
+	    });
+
+	    // creating with utc
+	    moment.utc = function (input, format, lang, strict) {
+	        var c;
+
+	        if (typeof(lang) === "boolean") {
+	            strict = lang;
+	            lang = undefined;
+	        }
+	        // object construction must be done this way.
+	        // https://github.com/moment/moment/issues/1423
+	        c = {};
+	        c._isAMomentObject = true;
+	        c._useUTC = true;
+	        c._isUTC = true;
+	        c._l = lang;
+	        c._i = input;
+	        c._f = format;
+	        c._strict = strict;
+	        c._pf = defaultParsingFlags();
+
+	        return makeMoment(c).utc();
+	    };
+
+	    // creating with unix timestamp (in seconds)
+	    moment.unix = function (input) {
+	        return moment(input * 1000);
+	    };
+
+	    // duration
+	    moment.duration = function (input, key) {
+	        var duration = input,
+	            // matching against regexp is expensive, do it on demand
+	            match = null,
+	            sign,
+	            ret,
+	            parseIso;
+
+	        if (moment.isDuration(input)) {
+	            duration = {
+	                ms: input._milliseconds,
+	                d: input._days,
+	                M: input._months
+	            };
+	        } else if (typeof input === 'number') {
+	            duration = {};
+	            if (key) {
+	                duration[key] = input;
+	            } else {
+	                duration.milliseconds = input;
+	            }
+	        } else if (!!(match = aspNetTimeSpanJsonRegex.exec(input))) {
+	            sign = (match[1] === "-") ? -1 : 1;
+	            duration = {
+	                y: 0,
+	                d: toInt(match[DATE]) * sign,
+	                h: toInt(match[HOUR]) * sign,
+	                m: toInt(match[MINUTE]) * sign,
+	                s: toInt(match[SECOND]) * sign,
+	                ms: toInt(match[MILLISECOND]) * sign
+	            };
+	        } else if (!!(match = isoDurationRegex.exec(input))) {
+	            sign = (match[1] === "-") ? -1 : 1;
+	            parseIso = function (inp) {
+	                // We'd normally use ~~inp for this, but unfortunately it also
+	                // converts floats to ints.
+	                // inp may be undefined, so careful calling replace on it.
+	                var res = inp && parseFloat(inp.replace(',', '.'));
+	                // apply sign while we're at it
+	                return (isNaN(res) ? 0 : res) * sign;
+	            };
+	            duration = {
+	                y: parseIso(match[2]),
+	                M: parseIso(match[3]),
+	                d: parseIso(match[4]),
+	                h: parseIso(match[5]),
+	                m: parseIso(match[6]),
+	                s: parseIso(match[7]),
+	                w: parseIso(match[8])
+	            };
+	        }
+
+	        ret = new Duration(duration);
+
+	        if (moment.isDuration(input) && input.hasOwnProperty('_lang')) {
+	            ret._lang = input._lang;
+	        }
+
+	        return ret;
+	    };
+
+	    // version number
+	    moment.version = VERSION;
+
+	    // default format
+	    moment.defaultFormat = isoFormat;
+
+	    // Plugins that add properties should also add the key here (null value),
+	    // so we can properly clone ourselves.
+	    moment.momentProperties = momentProperties;
+
+	    // This function will be called whenever a moment is mutated.
+	    // It is intended to keep the offset in sync with the timezone.
+	    moment.updateOffset = function () {};
+
+	    // This function will load languages and then set the global language.  If
+	    // no arguments are passed in, it will simply return the current global
+	    // language key.
+	    moment.lang = function (key, values) {
+	        var r;
+	        if (!key) {
+	            return moment.fn._lang._abbr;
+	        }
+	        if (values) {
+	            loadLang(normalizeLanguage(key), values);
+	        } else if (values === null) {
+	            unloadLang(key);
+	            key = 'en';
+	        } else if (!languages[key]) {
+	            getLangDefinition(key);
+	        }
+	        r = moment.duration.fn._lang = moment.fn._lang = getLangDefinition(key);
+	        return r._abbr;
+	    };
+
+	    // returns language data
+	    moment.langData = function (key) {
+	        if (key && key._lang && key._lang._abbr) {
+	            key = key._lang._abbr;
+	        }
+	        return getLangDefinition(key);
+	    };
+
+	    // compare moment object
+	    moment.isMoment = function (obj) {
+	        return obj instanceof Moment ||
+	            (obj != null &&  obj.hasOwnProperty('_isAMomentObject'));
+	    };
+
+	    // for typechecking Duration objects
+	    moment.isDuration = function (obj) {
+	        return obj instanceof Duration;
+	    };
+
+	    for (i = lists.length - 1; i >= 0; --i) {
+	        makeList(lists[i]);
+	    }
+
+	    moment.normalizeUnits = function (units) {
+	        return normalizeUnits(units);
+	    };
+
+	    moment.invalid = function (flags) {
+	        var m = moment.utc(NaN);
+	        if (flags != null) {
+	            extend(m._pf, flags);
+	        }
+	        else {
+	            m._pf.userInvalidated = true;
+	        }
+
+	        return m;
+	    };
+
+	    moment.parseZone = function () {
+	        return moment.apply(null, arguments).parseZone();
+	    };
+
+	    moment.parseTwoDigitYear = function (input) {
+	        return toInt(input) + (toInt(input) > 68 ? 1900 : 2000);
+	    };
+
+	    /************************************
+	        Moment Prototype
+	    ************************************/
+
+
+	    extend(moment.fn = Moment.prototype, {
+
+	        clone : function () {
+	            return moment(this);
+	        },
+
+	        valueOf : function () {
+	            return +this._d + ((this._offset || 0) * 60000);
+	        },
+
+	        unix : function () {
+	            return Math.floor(+this / 1000);
+	        },
+
+	        toString : function () {
+	            return this.clone().lang('en').format("ddd MMM DD YYYY HH:mm:ss [GMT]ZZ");
+	        },
+
+	        toDate : function () {
+	            return this._offset ? new Date(+this) : this._d;
+	        },
+
+	        toISOString : function () {
+	            var m = moment(this).utc();
+	            if (0 < m.year() && m.year() <= 9999) {
+	                return formatMoment(m, 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+	            } else {
+	                return formatMoment(m, 'YYYYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+	            }
+	        },
+
+	        toArray : function () {
+	            var m = this;
+	            return [
+	                m.year(),
+	                m.month(),
+	                m.date(),
+	                m.hours(),
+	                m.minutes(),
+	                m.seconds(),
+	                m.milliseconds()
+	            ];
+	        },
+
+	        isValid : function () {
+	            return isValid(this);
+	        },
+
+	        isDSTShifted : function () {
+
+	            if (this._a) {
+	                return this.isValid() && compareArrays(this._a, (this._isUTC ? moment.utc(this._a) : moment(this._a)).toArray()) > 0;
+	            }
+
+	            return false;
+	        },
+
+	        parsingFlags : function () {
+	            return extend({}, this._pf);
+	        },
+
+	        invalidAt: function () {
+	            return this._pf.overflow;
+	        },
+
+	        utc : function () {
+	            return this.zone(0);
+	        },
+
+	        local : function () {
+	            this.zone(0);
+	            this._isUTC = false;
+	            return this;
+	        },
+
+	        format : function (inputString) {
+	            var output = formatMoment(this, inputString || moment.defaultFormat);
+	            return this.lang().postformat(output);
+	        },
+
+	        add : function (input, val) {
+	            var dur;
+	            // switch args to support add('s', 1) and add(1, 's')
+	            if (typeof input === 'string') {
+	                dur = moment.duration(+val, input);
+	            } else {
+	                dur = moment.duration(input, val);
+	            }
+	            addOrSubtractDurationFromMoment(this, dur, 1);
+	            return this;
+	        },
+
+	        subtract : function (input, val) {
+	            var dur;
+	            // switch args to support subtract('s', 1) and subtract(1, 's')
+	            if (typeof input === 'string') {
+	                dur = moment.duration(+val, input);
+	            } else {
+	                dur = moment.duration(input, val);
+	            }
+	            addOrSubtractDurationFromMoment(this, dur, -1);
+	            return this;
+	        },
+
+	        diff : function (input, units, asFloat) {
+	            var that = makeAs(input, this),
+	                zoneDiff = (this.zone() - that.zone()) * 6e4,
+	                diff, output;
+
+	            units = normalizeUnits(units);
+
+	            if (units === 'year' || units === 'month') {
+	                // average number of days in the months in the given dates
+	                diff = (this.daysInMonth() + that.daysInMonth()) * 432e5; // 24 * 60 * 60 * 1000 / 2
+	                // difference in months
+	                output = ((this.year() - that.year()) * 12) + (this.month() - that.month());
+	                // adjust by taking difference in days, average number of days
+	                // and dst in the given months.
+	                output += ((this - moment(this).startOf('month')) -
+	                        (that - moment(that).startOf('month'))) / diff;
+	                // same as above but with zones, to negate all dst
+	                output -= ((this.zone() - moment(this).startOf('month').zone()) -
+	                        (that.zone() - moment(that).startOf('month').zone())) * 6e4 / diff;
+	                if (units === 'year') {
+	                    output = output / 12;
+	                }
+	            } else {
+	                diff = (this - that);
+	                output = units === 'second' ? diff / 1e3 : // 1000
+	                    units === 'minute' ? diff / 6e4 : // 1000 * 60
+	                    units === 'hour' ? diff / 36e5 : // 1000 * 60 * 60
+	                    units === 'day' ? (diff - zoneDiff) / 864e5 : // 1000 * 60 * 60 * 24, negate dst
+	                    units === 'week' ? (diff - zoneDiff) / 6048e5 : // 1000 * 60 * 60 * 24 * 7, negate dst
+	                    diff;
+	            }
+	            return asFloat ? output : absRound(output);
+	        },
+
+	        from : function (time, withoutSuffix) {
+	            return moment.duration(this.diff(time)).lang(this.lang()._abbr).humanize(!withoutSuffix);
+	        },
+
+	        fromNow : function (withoutSuffix) {
+	            return this.from(moment(), withoutSuffix);
+	        },
+
+	        calendar : function () {
+	            // We want to compare the start of today, vs this.
+	            // Getting start-of-today depends on whether we're zone'd or not.
+	            var sod = makeAs(moment(), this).startOf('day'),
+	                diff = this.diff(sod, 'days', true),
+	                format = diff < -6 ? 'sameElse' :
+	                    diff < -1 ? 'lastWeek' :
+	                    diff < 0 ? 'lastDay' :
+	                    diff < 1 ? 'sameDay' :
+	                    diff < 2 ? 'nextDay' :
+	                    diff < 7 ? 'nextWeek' : 'sameElse';
+	            return this.format(this.lang().calendar(format, this));
+	        },
+
+	        isLeapYear : function () {
+	            return isLeapYear(this.year());
+	        },
+
+	        isDST : function () {
+	            return (this.zone() < this.clone().month(0).zone() ||
+	                this.zone() < this.clone().month(5).zone());
+	        },
+
+	        day : function (input) {
+	            var day = this._isUTC ? this._d.getUTCDay() : this._d.getDay();
+	            if (input != null) {
+	                input = parseWeekday(input, this.lang());
+	                return this.add({ d : input - day });
+	            } else {
+	                return day;
+	            }
+	        },
+
+	        month : makeAccessor('Month', true),
+
+	        startOf: function (units) {
+	            units = normalizeUnits(units);
+	            // the following switch intentionally omits break keywords
+	            // to utilize falling through the cases.
+	            switch (units) {
+	            case 'year':
+	                this.month(0);
+	                /* falls through */
+	            case 'quarter':
+	            case 'month':
+	                this.date(1);
+	                /* falls through */
+	            case 'week':
+	            case 'isoWeek':
+	            case 'day':
+	                this.hours(0);
+	                /* falls through */
+	            case 'hour':
+	                this.minutes(0);
+	                /* falls through */
+	            case 'minute':
+	                this.seconds(0);
+	                /* falls through */
+	            case 'second':
+	                this.milliseconds(0);
+	                /* falls through */
+	            }
+
+	            // weeks are a special case
+	            if (units === 'week') {
+	                this.weekday(0);
+	            } else if (units === 'isoWeek') {
+	                this.isoWeekday(1);
+	            }
+
+	            // quarters are also special
+	            if (units === 'quarter') {
+	                this.month(Math.floor(this.month() / 3) * 3);
+	            }
+
+	            return this;
+	        },
+
+	        endOf: function (units) {
+	            units = normalizeUnits(units);
+	            return this.startOf(units).add((units === 'isoWeek' ? 'week' : units), 1).subtract('ms', 1);
+	        },
+
+	        isAfter: function (input, units) {
+	            units = typeof units !== 'undefined' ? units : 'millisecond';
+	            return +this.clone().startOf(units) > +moment(input).startOf(units);
+	        },
+
+	        isBefore: function (input, units) {
+	            units = typeof units !== 'undefined' ? units : 'millisecond';
+	            return +this.clone().startOf(units) < +moment(input).startOf(units);
+	        },
+
+	        isSame: function (input, units) {
+	            units = units || 'ms';
+	            return +this.clone().startOf(units) === +makeAs(input, this).startOf(units);
+	        },
+
+	        min: function (other) {
+	            other = moment.apply(null, arguments);
+	            return other < this ? this : other;
+	        },
+
+	        max: function (other) {
+	            other = moment.apply(null, arguments);
+	            return other > this ? this : other;
+	        },
+
+	        // keepTime = true means only change the timezone, without affecting
+	        // the local hour. So 5:31:26 +0300 --[zone(2, true)]--> 5:31:26 +0200
+	        // It is possible that 5:31:26 doesn't exist int zone +0200, so we
+	        // adjust the time as needed, to be valid.
+	        //
+	        // Keeping the time actually adds/subtracts (one hour)
+	        // from the actual represented time. That is why we call updateOffset
+	        // a second time. In case it wants us to change the offset again
+	        // _changeInProgress == true case, then we have to adjust, because
+	        // there is no such time in the given timezone.
+	        zone : function (input, keepTime) {
+	            var offset = this._offset || 0;
+	            if (input != null) {
+	                if (typeof input === "string") {
+	                    input = timezoneMinutesFromString(input);
+	                }
+	                if (Math.abs(input) < 16) {
+	                    input = input * 60;
+	                }
+	                this._offset = input;
+	                this._isUTC = true;
+	                if (offset !== input) {
+	                    if (!keepTime || this._changeInProgress) {
+	                        addOrSubtractDurationFromMoment(this,
+	                                moment.duration(offset - input, 'm'), 1, false);
+	                    } else if (!this._changeInProgress) {
+	                        this._changeInProgress = true;
+	                        moment.updateOffset(this, true);
+	                        this._changeInProgress = null;
+	                    }
+	                }
+	            } else {
+	                return this._isUTC ? offset : this._d.getTimezoneOffset();
+	            }
+	            return this;
+	        },
+
+	        zoneAbbr : function () {
+	            return this._isUTC ? "UTC" : "";
+	        },
+
+	        zoneName : function () {
+	            return this._isUTC ? "Coordinated Universal Time" : "";
+	        },
+
+	        parseZone : function () {
+	            if (this._tzm) {
+	                this.zone(this._tzm);
+	            } else if (typeof this._i === 'string') {
+	                this.zone(this._i);
+	            }
+	            return this;
+	        },
+
+	        hasAlignedHourOffset : function (input) {
+	            if (!input) {
+	                input = 0;
+	            }
+	            else {
+	                input = moment(input).zone();
+	            }
+
+	            return (this.zone() - input) % 60 === 0;
+	        },
+
+	        daysInMonth : function () {
+	            return daysInMonth(this.year(), this.month());
+	        },
+
+	        dayOfYear : function (input) {
+	            var dayOfYear = round((moment(this).startOf('day') - moment(this).startOf('year')) / 864e5) + 1;
+	            return input == null ? dayOfYear : this.add("d", (input - dayOfYear));
+	        },
+
+	        quarter : function (input) {
+	            return input == null ? Math.ceil((this.month() + 1) / 3) : this.month((input - 1) * 3 + this.month() % 3);
+	        },
+
+	        weekYear : function (input) {
+	            var year = weekOfYear(this, this.lang()._week.dow, this.lang()._week.doy).year;
+	            return input == null ? year : this.add("y", (input - year));
+	        },
+
+	        isoWeekYear : function (input) {
+	            var year = weekOfYear(this, 1, 4).year;
+	            return input == null ? year : this.add("y", (input - year));
+	        },
+
+	        week : function (input) {
+	            var week = this.lang().week(this);
+	            return input == null ? week : this.add("d", (input - week) * 7);
+	        },
+
+	        isoWeek : function (input) {
+	            var week = weekOfYear(this, 1, 4).week;
+	            return input == null ? week : this.add("d", (input - week) * 7);
+	        },
+
+	        weekday : function (input) {
+	            var weekday = (this.day() + 7 - this.lang()._week.dow) % 7;
+	            return input == null ? weekday : this.add("d", input - weekday);
+	        },
+
+	        isoWeekday : function (input) {
+	            // behaves the same as moment#day except
+	            // as a getter, returns 7 instead of 0 (1-7 range instead of 0-6)
+	            // as a setter, sunday should belong to the previous week.
+	            return input == null ? this.day() || 7 : this.day(this.day() % 7 ? input : input - 7);
+	        },
+
+	        isoWeeksInYear : function () {
+	            return weeksInYear(this.year(), 1, 4);
+	        },
+
+	        weeksInYear : function () {
+	            var weekInfo = this._lang._week;
+	            return weeksInYear(this.year(), weekInfo.dow, weekInfo.doy);
+	        },
+
+	        get : function (units) {
+	            units = normalizeUnits(units);
+	            return this[units]();
+	        },
+
+	        set : function (units, value) {
+	            units = normalizeUnits(units);
+	            if (typeof this[units] === 'function') {
+	                this[units](value);
+	            }
+	            return this;
+	        },
+
+	        // If passed a language key, it will set the language for this
+	        // instance.  Otherwise, it will return the language configuration
+	        // variables for this instance.
+	        lang : function (key) {
+	            if (key === undefined) {
+	                return this._lang;
+	            } else {
+	                this._lang = getLangDefinition(key);
+	                return this;
+	            }
+	        }
+	    });
+
+	    function rawMonthSetter(mom, value) {
+	        var dayOfMonth;
+
+	        // TODO: Move this out of here!
+	        if (typeof value === 'string') {
+	            value = mom.lang().monthsParse(value);
+	            // TODO: Another silent failure?
+	            if (typeof value !== 'number') {
+	                return mom;
+	            }
+	        }
+
+	        dayOfMonth = Math.min(mom.date(),
+	                daysInMonth(mom.year(), value));
+	        mom._d['set' + (mom._isUTC ? 'UTC' : '') + 'Month'](value, dayOfMonth);
+	        return mom;
+	    }
+
+	    function rawGetter(mom, unit) {
+	        return mom._d['get' + (mom._isUTC ? 'UTC' : '') + unit]();
+	    }
+
+	    function rawSetter(mom, unit, value) {
+	        if (unit === 'Month') {
+	            return rawMonthSetter(mom, value);
+	        } else {
+	            return mom._d['set' + (mom._isUTC ? 'UTC' : '') + unit](value);
+	        }
+	    }
+
+	    function makeAccessor(unit, keepTime) {
+	        return function (value) {
+	            if (value != null) {
+	                rawSetter(this, unit, value);
+	                moment.updateOffset(this, keepTime);
+	                return this;
+	            } else {
+	                return rawGetter(this, unit);
+	            }
+	        };
+	    }
+
+	    moment.fn.millisecond = moment.fn.milliseconds = makeAccessor('Milliseconds', false);
+	    moment.fn.second = moment.fn.seconds = makeAccessor('Seconds', false);
+	    moment.fn.minute = moment.fn.minutes = makeAccessor('Minutes', false);
+	    // Setting the hour should keep the time, because the user explicitly
+	    // specified which hour he wants. So trying to maintain the same hour (in
+	    // a new timezone) makes sense. Adding/subtracting hours does not follow
+	    // this rule.
+	    moment.fn.hour = moment.fn.hours = makeAccessor('Hours', true);
+	    // moment.fn.month is defined separately
+	    moment.fn.date = makeAccessor('Date', true);
+	    moment.fn.dates = deprecate("dates accessor is deprecated. Use date instead.", makeAccessor('Date', true));
+	    moment.fn.year = makeAccessor('FullYear', true);
+	    moment.fn.years = deprecate("years accessor is deprecated. Use year instead.", makeAccessor('FullYear', true));
+
+	    // add plural methods
+	    moment.fn.days = moment.fn.day;
+	    moment.fn.months = moment.fn.month;
+	    moment.fn.weeks = moment.fn.week;
+	    moment.fn.isoWeeks = moment.fn.isoWeek;
+	    moment.fn.quarters = moment.fn.quarter;
+
+	    // add aliased format methods
+	    moment.fn.toJSON = moment.fn.toISOString;
+
+	    /************************************
+	        Duration Prototype
+	    ************************************/
+
+
+	    extend(moment.duration.fn = Duration.prototype, {
+
+	        _bubble : function () {
+	            var milliseconds = this._milliseconds,
+	                days = this._days,
+	                months = this._months,
+	                data = this._data,
+	                seconds, minutes, hours, years;
+
+	            // The following code bubbles up values, see the tests for
+	            // examples of what that means.
+	            data.milliseconds = milliseconds % 1000;
+
+	            seconds = absRound(milliseconds / 1000);
+	            data.seconds = seconds % 60;
+
+	            minutes = absRound(seconds / 60);
+	            data.minutes = minutes % 60;
+
+	            hours = absRound(minutes / 60);
+	            data.hours = hours % 24;
+
+	            days += absRound(hours / 24);
+	            data.days = days % 30;
+
+	            months += absRound(days / 30);
+	            data.months = months % 12;
+
+	            years = absRound(months / 12);
+	            data.years = years;
+	        },
+
+	        weeks : function () {
+	            return absRound(this.days() / 7);
+	        },
+
+	        valueOf : function () {
+	            return this._milliseconds +
+	              this._days * 864e5 +
+	              (this._months % 12) * 2592e6 +
+	              toInt(this._months / 12) * 31536e6;
+	        },
+
+	        humanize : function (withSuffix) {
+	            var difference = +this,
+	                output = relativeTime(difference, !withSuffix, this.lang());
+
+	            if (withSuffix) {
+	                output = this.lang().pastFuture(difference, output);
+	            }
+
+	            return this.lang().postformat(output);
+	        },
+
+	        add : function (input, val) {
+	            // supports only 2.0-style add(1, 's') or add(moment)
+	            var dur = moment.duration(input, val);
+
+	            this._milliseconds += dur._milliseconds;
+	            this._days += dur._days;
+	            this._months += dur._months;
+
+	            this._bubble();
+
+	            return this;
+	        },
+
+	        subtract : function (input, val) {
+	            var dur = moment.duration(input, val);
+
+	            this._milliseconds -= dur._milliseconds;
+	            this._days -= dur._days;
+	            this._months -= dur._months;
+
+	            this._bubble();
+
+	            return this;
+	        },
+
+	        get : function (units) {
+	            units = normalizeUnits(units);
+	            return this[units.toLowerCase() + 's']();
+	        },
+
+	        as : function (units) {
+	            units = normalizeUnits(units);
+	            return this['as' + units.charAt(0).toUpperCase() + units.slice(1) + 's']();
+	        },
+
+	        lang : moment.fn.lang,
+
+	        toIsoString : function () {
+	            // inspired by https://github.com/dordille/moment-isoduration/blob/master/moment.isoduration.js
+	            var years = Math.abs(this.years()),
+	                months = Math.abs(this.months()),
+	                days = Math.abs(this.days()),
+	                hours = Math.abs(this.hours()),
+	                minutes = Math.abs(this.minutes()),
+	                seconds = Math.abs(this.seconds() + this.milliseconds() / 1000);
+
+	            if (!this.asSeconds()) {
+	                // this is the same as C#'s (Noda) and python (isodate)...
+	                // but not other JS (goog.date)
+	                return 'P0D';
+	            }
+
+	            return (this.asSeconds() < 0 ? '-' : '') +
+	                'P' +
+	                (years ? years + 'Y' : '') +
+	                (months ? months + 'M' : '') +
+	                (days ? days + 'D' : '') +
+	                ((hours || minutes || seconds) ? 'T' : '') +
+	                (hours ? hours + 'H' : '') +
+	                (minutes ? minutes + 'M' : '') +
+	                (seconds ? seconds + 'S' : '');
+	        }
+	    });
+
+	    function makeDurationGetter(name) {
+	        moment.duration.fn[name] = function () {
+	            return this._data[name];
+	        };
+	    }
+
+	    function makeDurationAsGetter(name, factor) {
+	        moment.duration.fn['as' + name] = function () {
+	            return +this / factor;
+	        };
+	    }
+
+	    for (i in unitMillisecondFactors) {
+	        if (unitMillisecondFactors.hasOwnProperty(i)) {
+	            makeDurationAsGetter(i, unitMillisecondFactors[i]);
+	            makeDurationGetter(i.toLowerCase());
+	        }
+	    }
+
+	    makeDurationAsGetter('Weeks', 6048e5);
+	    moment.duration.fn.asMonths = function () {
+	        return (+this - this.years() * 31536e6) / 2592e6 + this.years() * 12;
+	    };
+
+
+	    /************************************
+	        Default Lang
+	    ************************************/
+
+
+	    // Set default language, other languages will inherit from English.
+	    moment.lang('en', {
+	        ordinal : function (number) {
+	            var b = number % 10,
+	                output = (toInt(number % 100 / 10) === 1) ? 'th' :
+	                (b === 1) ? 'st' :
+	                (b === 2) ? 'nd' :
+	                (b === 3) ? 'rd' : 'th';
+	            return number + output;
+	        }
+	    });
+
+	    /* EMBED_LANGUAGES */
+
+	    /************************************
+	        Exposing Moment
+	    ************************************/
+
+	    function makeGlobal(shouldDeprecate) {
+	        /*global ender:false */
+	        if (typeof ender !== 'undefined') {
+	            return;
+	        }
+	        oldGlobalMoment = globalScope.moment;
+	        if (shouldDeprecate) {
+	            globalScope.moment = deprecate(
+	                    "Accessing Moment through the global scope is " +
+	                    "deprecated, and will be removed in an upcoming " +
+	                    "release.",
+	                    moment);
+	        } else {
+	            globalScope.moment = moment;
+	        }
+	    }
+
+	    // CommonJS module is defined
+	    if (hasModule) {
+	        module.exports = moment;
+	    } else if (true) {
+	        !(__WEBPACK_AMD_DEFINE_RESULT__ = function (require, exports, module) {
+	            if (module.config && module.config() && module.config().noGlobal === true) {
+	                // release the global variable
+	                globalScope.moment = oldGlobalMoment;
+	            }
+
+	            return moment;
+	        }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	        makeGlobal(true);
+	    } else {
+	        makeGlobal();
+	    }
+	}).call(this);
+	
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(266)(module)))
+
+/***/ },
+/* 195 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var map = {
+		"./ar": 197,
+		"./ar-ma": 196,
+		"./ar-ma.js": 196,
+		"./ar.js": 197,
+		"./bg": 198,
+		"./bg.js": 198,
+		"./br": 199,
+		"./br.js": 199,
+		"./bs": 200,
+		"./bs.js": 200,
+		"./ca": 201,
+		"./ca.js": 201,
+		"./cs": 202,
+		"./cs.js": 202,
+		"./cv": 203,
+		"./cv.js": 203,
+		"./cy": 204,
+		"./cy.js": 204,
+		"./da": 205,
+		"./da.js": 205,
+		"./de": 206,
+		"./de.js": 206,
+		"./el": 207,
+		"./el.js": 207,
+		"./en-au": 208,
+		"./en-au.js": 208,
+		"./en-ca": 209,
+		"./en-ca.js": 209,
+		"./en-gb": 210,
+		"./en-gb.js": 210,
+		"./eo": 211,
+		"./eo.js": 211,
+		"./es": 212,
+		"./es.js": 212,
+		"./et": 213,
+		"./et.js": 213,
+		"./eu": 214,
+		"./eu.js": 214,
+		"./fa": 215,
+		"./fa.js": 215,
+		"./fi": 216,
+		"./fi.js": 216,
+		"./fo": 217,
+		"./fo.js": 217,
+		"./fr": 219,
+		"./fr-ca": 218,
+		"./fr-ca.js": 218,
+		"./fr.js": 219,
+		"./gl": 220,
+		"./gl.js": 220,
+		"./he": 221,
+		"./he.js": 221,
+		"./hi": 222,
+		"./hi.js": 222,
+		"./hr": 223,
+		"./hr.js": 223,
+		"./hu": 224,
+		"./hu.js": 224,
+		"./hy-am": 225,
+		"./hy-am.js": 225,
+		"./id": 226,
+		"./id.js": 226,
+		"./is": 227,
+		"./is.js": 227,
+		"./it": 228,
+		"./it.js": 228,
+		"./ja": 229,
+		"./ja.js": 229,
+		"./ka": 230,
+		"./ka.js": 230,
+		"./km": 231,
+		"./km.js": 231,
+		"./ko": 232,
+		"./ko.js": 232,
+		"./lb": 233,
+		"./lb.js": 233,
+		"./lt": 234,
+		"./lt.js": 234,
+		"./lv": 235,
+		"./lv.js": 235,
+		"./mk": 236,
+		"./mk.js": 236,
+		"./ml": 237,
+		"./ml.js": 237,
+		"./mr": 238,
+		"./mr.js": 238,
+		"./ms-my": 239,
+		"./ms-my.js": 239,
+		"./nb": 240,
+		"./nb.js": 240,
+		"./ne": 241,
+		"./ne.js": 241,
+		"./nl": 242,
+		"./nl.js": 242,
+		"./nn": 243,
+		"./nn.js": 243,
+		"./pl": 244,
+		"./pl.js": 244,
+		"./pt": 246,
+		"./pt-br": 245,
+		"./pt-br.js": 245,
+		"./pt.js": 246,
+		"./ro": 247,
+		"./ro.js": 247,
+		"./ru": 248,
+		"./ru.js": 248,
+		"./sk": 249,
+		"./sk.js": 249,
+		"./sl": 250,
+		"./sl.js": 250,
+		"./sq": 251,
+		"./sq.js": 251,
+		"./sr": 253,
+		"./sr-cyr": 252,
+		"./sr-cyr.js": 252,
+		"./sr.js": 253,
+		"./sv": 254,
+		"./sv.js": 254,
+		"./ta": 255,
+		"./ta.js": 255,
+		"./th": 256,
+		"./th.js": 256,
+		"./tl-ph": 257,
+		"./tl-ph.js": 257,
+		"./tr": 258,
+		"./tr.js": 258,
+		"./tzm": 260,
+		"./tzm-la": 259,
+		"./tzm-la.js": 259,
+		"./tzm.js": 260,
+		"./uk": 261,
+		"./uk.js": 261,
+		"./uz": 262,
+		"./uz.js": 262,
+		"./vi": 263,
+		"./vi.js": 263,
+		"./zh-cn": 264,
+		"./zh-cn.js": 264,
+		"./zh-tw": 265,
+		"./zh-tw.js": 265
+	};
+	function webpackContext(req) {
+		return __webpack_require__(webpackContextResolve(req));
+	};
+	function webpackContextResolve(req) {
+		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
+	};
+	webpackContext.keys = function webpackContextKeys() {
+		return Object.keys(map);
+	};
+	webpackContext.resolve = webpackContextResolve;
+	module.exports = webpackContext;
+	webpackContext.id = 195;
+
+
+/***/ },
+/* 196 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Moroccan Arabic (ar-ma)
+	// author : ElFadili Yassine : https://github.com/ElFadiliY
+	// author : Abdel Said : https://github.com/abdelsaid
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ar-ma', {
+	        months : "يناير_فبراير_مارس_أبريل_ماي_يونيو_يوليوز_غشت_شتنبر_أكتوبر_نونبر_دجنبر".split("_"),
+	        monthsShort : "يناير_فبراير_مارس_أبريل_ماي_يونيو_يوليوز_غشت_شتنبر_أكتوبر_نونبر_دجنبر".split("_"),
+	        weekdays : "الأحد_الإتنين_الثلاثاء_الأربعاء_الخميس_الجمعة_السبت".split("_"),
+	        weekdaysShort : "احد_اتنين_ثلاثاء_اربعاء_خميس_جمعة_سبت".split("_"),
+	        weekdaysMin : "ح_ن_ث_ر_خ_ج_س".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[اليوم على الساعة] LT",
+	            nextDay: '[غدا على الساعة] LT',
+	            nextWeek: 'dddd [على الساعة] LT',
+	            lastDay: '[أمس على الساعة] LT',
+	            lastWeek: 'dddd [على الساعة] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "في %s",
+	            past : "منذ %s",
+	            s : "ثوان",
+	            m : "دقيقة",
+	            mm : "%d دقائق",
+	            h : "ساعة",
+	            hh : "%d ساعات",
+	            d : "يوم",
+	            dd : "%d أيام",
+	            M : "شهر",
+	            MM : "%d أشهر",
+	            y : "سنة",
+	            yy : "%d سنوات"
+	        },
+	        week : {
+	            dow : 6, // Saturday is the first day of the week.
+	            doy : 12  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 197 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Arabic (ar)
+	// author : Abdel Said : https://github.com/abdelsaid
+	// changes in months, weekdays : Ahmed Elkhatib
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ar', {
+	        months : "يناير/ كانون الثاني_فبراير/ شباط_مارس/ آذار_أبريل/ نيسان_مايو/ أيار_يونيو/ حزيران_يوليو/ تموز_أغسطس/ آب_سبتمبر/ أيلول_أكتوبر/ تشرين الأول_نوفمبر/ تشرين الثاني_ديسمبر/ كانون الأول".split("_"),
+	        monthsShort : "يناير/ كانون الثاني_فبراير/ شباط_مارس/ آذار_أبريل/ نيسان_مايو/ أيار_يونيو/ حزيران_يوليو/ تموز_أغسطس/ آب_سبتمبر/ أيلول_أكتوبر/ تشرين الأول_نوفمبر/ تشرين الثاني_ديسمبر/ كانون الأول".split("_"),
+	        weekdays : "الأحد_الإثنين_الثلاثاء_الأربعاء_الخميس_الجمعة_السبت".split("_"),
+	        weekdaysShort : "الأحد_الإثنين_الثلاثاء_الأربعاء_الخميس_الجمعة_السبت".split("_"),
+	        weekdaysMin : "ح_ن_ث_ر_خ_ج_س".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[اليوم على الساعة] LT",
+	            nextDay: '[غدا على الساعة] LT',
+	            nextWeek: 'dddd [على الساعة] LT',
+	            lastDay: '[أمس على الساعة] LT',
+	            lastWeek: 'dddd [على الساعة] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "في %s",
+	            past : "منذ %s",
+	            s : "ثوان",
+	            m : "دقيقة",
+	            mm : "%d دقائق",
+	            h : "ساعة",
+	            hh : "%d ساعات",
+	            d : "يوم",
+	            dd : "%d أيام",
+	            M : "شهر",
+	            MM : "%d أشهر",
+	            y : "سنة",
+	            yy : "%d سنوات"
+	        },
+	        week : {
+	            dow : 6, // Saturday is the first day of the week.
+	            doy : 12  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 198 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : bulgarian (bg)
+	// author : Krasen Borisov : https://github.com/kraz
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('bg', {
+	        months : "януари_февруари_март_април_май_юни_юли_август_септември_октомври_ноември_декември".split("_"),
+	        monthsShort : "янр_фев_мар_апр_май_юни_юли_авг_сеп_окт_ное_дек".split("_"),
+	        weekdays : "неделя_понеделник_вторник_сряда_четвъртък_петък_събота".split("_"),
+	        weekdaysShort : "нед_пон_вто_сря_чет_пет_съб".split("_"),
+	        weekdaysMin : "нд_пн_вт_ср_чт_пт_сб".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "D.MM.YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Днес в] LT',
+	            nextDay : '[Утре в] LT',
+	            nextWeek : 'dddd [в] LT',
+	            lastDay : '[Вчера в] LT',
+	            lastWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                case 3:
+	                case 6:
+	                    return '[В изминалата] dddd [в] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[В изминалия] dddd [в] LT';
+	                }
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "след %s",
+	            past : "преди %s",
+	            s : "няколко секунди",
+	            m : "минута",
+	            mm : "%d минути",
+	            h : "час",
+	            hh : "%d часа",
+	            d : "ден",
+	            dd : "%d дни",
+	            M : "месец",
+	            MM : "%d месеца",
+	            y : "година",
+	            yy : "%d години"
+	        },
+	        ordinal : function (number) {
+	            var lastDigit = number % 10,
+	                last2Digits = number % 100;
+	            if (number === 0) {
+	                return number + '-ев';
+	            } else if (last2Digits === 0) {
+	                return number + '-ен';
+	            } else if (last2Digits > 10 && last2Digits < 20) {
+	                return number + '-ти';
+	            } else if (lastDigit === 1) {
+	                return number + '-ви';
+	            } else if (lastDigit === 2) {
+	                return number + '-ри';
+	            } else if (lastDigit === 7 || lastDigit === 8) {
+	                return number + '-ми';
+	            } else {
+	                return number + '-ти';
+	            }
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 199 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : breton (br)
+	// author : Jean-Baptiste Le Duigou : https://github.com/jbleduigou
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function relativeTimeWithMutation(number, withoutSuffix, key) {
+	        var format = {
+	            'mm': "munutenn",
+	            'MM': "miz",
+	            'dd': "devezh"
+	        };
+	        return number + ' ' + mutation(format[key], number);
+	    }
+
+	    function specialMutationForYears(number) {
+	        switch (lastNumber(number)) {
+	        case 1:
+	        case 3:
+	        case 4:
+	        case 5:
+	        case 9:
+	            return number + ' bloaz';
+	        default:
+	            return number + ' vloaz';
+	        }
+	    }
+
+	    function lastNumber(number) {
+	        if (number > 9) {
+	            return lastNumber(number % 10);
+	        }
+	        return number;
+	    }
+
+	    function mutation(text, number) {
+	        if (number === 2) {
+	            return softMutation(text);
+	        }
+	        return text;
+	    }
+
+	    function softMutation(text) {
+	        var mutationTable = {
+	            'm': 'v',
+	            'b': 'v',
+	            'd': 'z'
+	        };
+	        if (mutationTable[text.charAt(0)] === undefined) {
+	            return text;
+	        }
+	        return mutationTable[text.charAt(0)] + text.substring(1);
+	    }
+
+	    return moment.lang('br', {
+	        months : "Genver_C'hwevrer_Meurzh_Ebrel_Mae_Mezheven_Gouere_Eost_Gwengolo_Here_Du_Kerzu".split("_"),
+	        monthsShort : "Gen_C'hwe_Meu_Ebr_Mae_Eve_Gou_Eos_Gwe_Her_Du_Ker".split("_"),
+	        weekdays : "Sul_Lun_Meurzh_Merc'her_Yaou_Gwener_Sadorn".split("_"),
+	        weekdaysShort : "Sul_Lun_Meu_Mer_Yao_Gwe_Sad".split("_"),
+	        weekdaysMin : "Su_Lu_Me_Mer_Ya_Gw_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "h[e]mm A",
+	            L : "DD/MM/YYYY",
+	            LL : "D [a viz] MMMM YYYY",
+	            LLL : "D [a viz] MMMM YYYY LT",
+	            LLLL : "dddd, D [a viz] MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Hiziv da] LT',
+	            nextDay : '[Warc\'hoazh da] LT',
+	            nextWeek : 'dddd [da] LT',
+	            lastDay : '[Dec\'h da] LT',
+	            lastWeek : 'dddd [paset da] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "a-benn %s",
+	            past : "%s 'zo",
+	            s : "un nebeud segondennoù",
+	            m : "ur vunutenn",
+	            mm : relativeTimeWithMutation,
+	            h : "un eur",
+	            hh : "%d eur",
+	            d : "un devezh",
+	            dd : relativeTimeWithMutation,
+	            M : "ur miz",
+	            MM : relativeTimeWithMutation,
+	            y : "ur bloaz",
+	            yy : specialMutationForYears
+	        },
+	        ordinal : function (number) {
+	            var output = (number === 1) ? 'añ' : 'vet';
+	            return number + output;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 200 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : bosnian (bs)
+	// author : Nedim Cholich : https://github.com/frontyard
+	// based on (hr) translation by Bojan Marković
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    function translate(number, withoutSuffix, key) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 'm':
+	            return withoutSuffix ? 'jedna minuta' : 'jedne minute';
+	        case 'mm':
+	            if (number === 1) {
+	                result += 'minuta';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'minute';
+	            } else {
+	                result += 'minuta';
+	            }
+	            return result;
+	        case 'h':
+	            return withoutSuffix ? 'jedan sat' : 'jednog sata';
+	        case 'hh':
+	            if (number === 1) {
+	                result += 'sat';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'sata';
+	            } else {
+	                result += 'sati';
+	            }
+	            return result;
+	        case 'dd':
+	            if (number === 1) {
+	                result += 'dan';
+	            } else {
+	                result += 'dana';
+	            }
+	            return result;
+	        case 'MM':
+	            if (number === 1) {
+	                result += 'mjesec';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'mjeseca';
+	            } else {
+	                result += 'mjeseci';
+	            }
+	            return result;
+	        case 'yy':
+	            if (number === 1) {
+	                result += 'godina';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'godine';
+	            } else {
+	                result += 'godina';
+	            }
+	            return result;
+	        }
+	    }
+
+	    return moment.lang('bs', {
+			months : "januar_februar_mart_april_maj_juni_juli_avgust_septembar_oktobar_novembar_decembar".split("_"),
+			monthsShort : "jan._feb._mar._apr._maj._jun._jul._avg._sep._okt._nov._dec.".split("_"),
+	        weekdays : "nedjelja_ponedjeljak_utorak_srijeda_četvrtak_petak_subota".split("_"),
+	        weekdaysShort : "ned._pon._uto._sri._čet._pet._sub.".split("_"),
+	        weekdaysMin : "ne_po_ut_sr_če_pe_su".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD. MM. YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY LT",
+	            LLLL : "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay  : '[danas u] LT',
+	            nextDay  : '[sutra u] LT',
+
+	            nextWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[u] [nedjelju] [u] LT';
+	                case 3:
+	                    return '[u] [srijedu] [u] LT';
+	                case 6:
+	                    return '[u] [subotu] [u] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[u] dddd [u] LT';
+	                }
+	            },
+	            lastDay  : '[jučer u] LT',
+	            lastWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                case 3:
+	                    return '[prošlu] dddd [u] LT';
+	                case 6:
+	                    return '[prošle] [subote] [u] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[prošli] dddd [u] LT';
+	                }
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "za %s",
+	            past   : "prije %s",
+	            s      : "par sekundi",
+	            m      : translate,
+	            mm     : translate,
+	            h      : translate,
+	            hh     : translate,
+	            d      : "dan",
+	            dd     : translate,
+	            M      : "mjesec",
+	            MM     : translate,
+	            y      : "godinu",
+	            yy     : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 201 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : catalan (ca)
+	// author : Juan G. Hurtado : https://github.com/juanghurtado
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ca', {
+	        months : "gener_febrer_març_abril_maig_juny_juliol_agost_setembre_octubre_novembre_desembre".split("_"),
+	        monthsShort : "gen._febr._mar._abr._mai._jun._jul._ag._set._oct._nov._des.".split("_"),
+	        weekdays : "diumenge_dilluns_dimarts_dimecres_dijous_divendres_dissabte".split("_"),
+	        weekdaysShort : "dg._dl._dt._dc._dj._dv._ds.".split("_"),
+	        weekdaysMin : "Dg_Dl_Dt_Dc_Dj_Dv_Ds".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : function () {
+	                return '[avui a ' + ((this.hours() !== 1) ? 'les' : 'la') + '] LT';
+	            },
+	            nextDay : function () {
+	                return '[demà a ' + ((this.hours() !== 1) ? 'les' : 'la') + '] LT';
+	            },
+	            nextWeek : function () {
+	                return 'dddd [a ' + ((this.hours() !== 1) ? 'les' : 'la') + '] LT';
+	            },
+	            lastDay : function () {
+	                return '[ahir a ' + ((this.hours() !== 1) ? 'les' : 'la') + '] LT';
+	            },
+	            lastWeek : function () {
+	                return '[el] dddd [passat a ' + ((this.hours() !== 1) ? 'les' : 'la') + '] LT';
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "en %s",
+	            past : "fa %s",
+	            s : "uns segons",
+	            m : "un minut",
+	            mm : "%d minuts",
+	            h : "una hora",
+	            hh : "%d hores",
+	            d : "un dia",
+	            dd : "%d dies",
+	            M : "un mes",
+	            MM : "%d mesos",
+	            y : "un any",
+	            yy : "%d anys"
+	        },
+	        ordinal : '%dº',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 202 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : czech (cs)
+	// author : petrbela : https://github.com/petrbela
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var months = "leden_únor_březen_duben_květen_červen_červenec_srpen_září_říjen_listopad_prosinec".split("_"),
+	        monthsShort = "led_úno_bře_dub_kvě_čvn_čvc_srp_zář_říj_lis_pro".split("_");
+
+	    function plural(n) {
+	        return (n > 1) && (n < 5) && (~~(n / 10) !== 1);
+	    }
+
+	    function translate(number, withoutSuffix, key, isFuture) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 's':  // a few seconds / in a few seconds / a few seconds ago
+	            return (withoutSuffix || isFuture) ? 'pár sekund' : 'pár sekundami';
+	        case 'm':  // a minute / in a minute / a minute ago
+	            return withoutSuffix ? 'minuta' : (isFuture ? 'minutu' : 'minutou');
+	        case 'mm': // 9 minutes / in 9 minutes / 9 minutes ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'minuty' : 'minut');
+	            } else {
+	                return result + 'minutami';
+	            }
+	            break;
+	        case 'h':  // an hour / in an hour / an hour ago
+	            return withoutSuffix ? 'hodina' : (isFuture ? 'hodinu' : 'hodinou');
+	        case 'hh': // 9 hours / in 9 hours / 9 hours ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'hodiny' : 'hodin');
+	            } else {
+	                return result + 'hodinami';
+	            }
+	            break;
+	        case 'd':  // a day / in a day / a day ago
+	            return (withoutSuffix || isFuture) ? 'den' : 'dnem';
+	        case 'dd': // 9 days / in 9 days / 9 days ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'dny' : 'dní');
+	            } else {
+	                return result + 'dny';
+	            }
+	            break;
+	        case 'M':  // a month / in a month / a month ago
+	            return (withoutSuffix || isFuture) ? 'měsíc' : 'měsícem';
+	        case 'MM': // 9 months / in 9 months / 9 months ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'měsíce' : 'měsíců');
+	            } else {
+	                return result + 'měsíci';
+	            }
+	            break;
+	        case 'y':  // a year / in a year / a year ago
+	            return (withoutSuffix || isFuture) ? 'rok' : 'rokem';
+	        case 'yy': // 9 years / in 9 years / 9 years ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'roky' : 'let');
+	            } else {
+	                return result + 'lety';
+	            }
+	            break;
+	        }
+	    }
+
+	    return moment.lang('cs', {
+	        months : months,
+	        monthsShort : monthsShort,
+	        monthsParse : (function (months, monthsShort) {
+	            var i, _monthsParse = [];
+	            for (i = 0; i < 12; i++) {
+	                // use custom parser to solve problem with July (červenec)
+	                _monthsParse[i] = new RegExp('^' + months[i] + '$|^' + monthsShort[i] + '$', 'i');
+	            }
+	            return _monthsParse;
+	        }(months, monthsShort)),
+	        weekdays : "neděle_pondělí_úterý_středa_čtvrtek_pátek_sobota".split("_"),
+	        weekdaysShort : "ne_po_út_st_čt_pá_so".split("_"),
+	        weekdaysMin : "ne_po_út_st_čt_pá_so".split("_"),
+	        longDateFormat : {
+	            LT: "H.mm",
+	            L : "DD. MM. YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY LT",
+	            LLLL : "dddd D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[dnes v] LT",
+	            nextDay: '[zítra v] LT',
+	            nextWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[v neděli v] LT';
+	                case 1:
+	                case 2:
+	                    return '[v] dddd [v] LT';
+	                case 3:
+	                    return '[ve středu v] LT';
+	                case 4:
+	                    return '[ve čtvrtek v] LT';
+	                case 5:
+	                    return '[v pátek v] LT';
+	                case 6:
+	                    return '[v sobotu v] LT';
+	                }
+	            },
+	            lastDay: '[včera v] LT',
+	            lastWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[minulou neděli v] LT';
+	                case 1:
+	                case 2:
+	                    return '[minulé] dddd [v] LT';
+	                case 3:
+	                    return '[minulou středu v] LT';
+	                case 4:
+	                case 5:
+	                    return '[minulý] dddd [v] LT';
+	                case 6:
+	                    return '[minulou sobotu v] LT';
+	                }
+	            },
+	            sameElse: "L"
+	        },
+	        relativeTime : {
+	            future : "za %s",
+	            past : "před %s",
+	            s : translate,
+	            m : translate,
+	            mm : translate,
+	            h : translate,
+	            hh : translate,
+	            d : translate,
+	            dd : translate,
+	            M : translate,
+	            MM : translate,
+	            y : translate,
+	            yy : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 203 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : chuvash (cv)
+	// author : Anatoly Mironov : https://github.com/mirontoli
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('cv', {
+	        months : "кăрлач_нарăс_пуш_ака_май_çĕртме_утă_çурла_авăн_юпа_чӳк_раштав".split("_"),
+	        monthsShort : "кăр_нар_пуш_ака_май_çĕр_утă_çур_ав_юпа_чӳк_раш".split("_"),
+	        weekdays : "вырсарникун_тунтикун_ытларикун_юнкун_кĕçнерникун_эрнекун_шăматкун".split("_"),
+	        weekdaysShort : "выр_тун_ытл_юн_кĕç_эрн_шăм".split("_"),
+	        weekdaysMin : "вр_тн_ыт_юн_кç_эр_шм".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD-MM-YYYY",
+	            LL : "YYYY [çулхи] MMMM [уйăхĕн] D[-мĕшĕ]",
+	            LLL : "YYYY [çулхи] MMMM [уйăхĕн] D[-мĕшĕ], LT",
+	            LLLL : "dddd, YYYY [çулхи] MMMM [уйăхĕн] D[-мĕшĕ], LT"
+	        },
+	        calendar : {
+	            sameDay: '[Паян] LT [сехетре]',
+	            nextDay: '[Ыран] LT [сехетре]',
+	            lastDay: '[Ĕнер] LT [сехетре]',
+	            nextWeek: '[Çитес] dddd LT [сехетре]',
+	            lastWeek: '[Иртнĕ] dddd LT [сехетре]',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : function (output) {
+	                var affix = /сехет$/i.exec(output) ? "рен" : /çул$/i.exec(output) ? "тан" : "ран";
+	                return output + affix;
+	            },
+	            past : "%s каялла",
+	            s : "пĕр-ик çеккунт",
+	            m : "пĕр минут",
+	            mm : "%d минут",
+	            h : "пĕр сехет",
+	            hh : "%d сехет",
+	            d : "пĕр кун",
+	            dd : "%d кун",
+	            M : "пĕр уйăх",
+	            MM : "%d уйăх",
+	            y : "пĕр çул",
+	            yy : "%d çул"
+	        },
+	        ordinal : '%d-мĕш',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 204 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Welsh (cy)
+	// author : Robert Allen
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang("cy", {
+	        months: "Ionawr_Chwefror_Mawrth_Ebrill_Mai_Mehefin_Gorffennaf_Awst_Medi_Hydref_Tachwedd_Rhagfyr".split("_"),
+	        monthsShort: "Ion_Chwe_Maw_Ebr_Mai_Meh_Gor_Aws_Med_Hyd_Tach_Rhag".split("_"),
+	        weekdays: "Dydd Sul_Dydd Llun_Dydd Mawrth_Dydd Mercher_Dydd Iau_Dydd Gwener_Dydd Sadwrn".split("_"),
+	        weekdaysShort: "Sul_Llun_Maw_Mer_Iau_Gwe_Sad".split("_"),
+	        weekdaysMin: "Su_Ll_Ma_Me_Ia_Gw_Sa".split("_"),
+	        // time formats are the same as en-gb
+	        longDateFormat: {
+	            LT: "HH:mm",
+	            L: "DD/MM/YYYY",
+	            LL: "D MMMM YYYY",
+	            LLL: "D MMMM YYYY LT",
+	            LLLL: "dddd, D MMMM YYYY LT"
+	        },
+	        calendar: {
+	            sameDay: '[Heddiw am] LT',
+	            nextDay: '[Yfory am] LT',
+	            nextWeek: 'dddd [am] LT',
+	            lastDay: '[Ddoe am] LT',
+	            lastWeek: 'dddd [diwethaf am] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime: {
+	            future: "mewn %s",
+	            past: "%s yn àl",
+	            s: "ychydig eiliadau",
+	            m: "munud",
+	            mm: "%d munud",
+	            h: "awr",
+	            hh: "%d awr",
+	            d: "diwrnod",
+	            dd: "%d diwrnod",
+	            M: "mis",
+	            MM: "%d mis",
+	            y: "blwyddyn",
+	            yy: "%d flynedd"
+	        },
+	        // traditional ordinal numbers above 31 are not commonly used in colloquial Welsh
+	        ordinal: function (number) {
+	            var b = number,
+	                output = '',
+	                lookup = [
+	                    '', 'af', 'il', 'ydd', 'ydd', 'ed', 'ed', 'ed', 'fed', 'fed', 'fed', // 1af to 10fed
+	                    'eg', 'fed', 'eg', 'eg', 'fed', 'eg', 'eg', 'fed', 'eg', 'fed' // 11eg to 20fed
+	                ];
+
+	            if (b > 20) {
+	                if (b === 40 || b === 50 || b === 60 || b === 80 || b === 100) {
+	                    output = 'fed'; // not 30ain, 70ain or 90ain
+	                } else {
+	                    output = 'ain';
+	                }
+	            } else if (b > 0) {
+	                output = lookup[b];
+	            }
+
+	            return number + output;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 205 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : danish (da)
+	// author : Ulrik Nielsen : https://github.com/mrbase
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('da', {
+	        months : "januar_februar_marts_april_maj_juni_juli_august_september_oktober_november_december".split("_"),
+	        monthsShort : "jan_feb_mar_apr_maj_jun_jul_aug_sep_okt_nov_dec".split("_"),
+	        weekdays : "søndag_mandag_tirsdag_onsdag_torsdag_fredag_lørdag".split("_"),
+	        weekdaysShort : "søn_man_tir_ons_tor_fre_lør".split("_"),
+	        weekdaysMin : "sø_ma_ti_on_to_fr_lø".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D. MMMM, YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[I dag kl.] LT',
+	            nextDay : '[I morgen kl.] LT',
+	            nextWeek : 'dddd [kl.] LT',
+	            lastDay : '[I går kl.] LT',
+	            lastWeek : '[sidste] dddd [kl] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "om %s",
+	            past : "%s siden",
+	            s : "få sekunder",
+	            m : "et minut",
+	            mm : "%d minutter",
+	            h : "en time",
+	            hh : "%d timer",
+	            d : "en dag",
+	            dd : "%d dage",
+	            M : "en måned",
+	            MM : "%d måneder",
+	            y : "et år",
+	            yy : "%d år"
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 206 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : german (de)
+	// author : lluchs : https://github.com/lluchs
+	// author: Menelion Elensúle: https://github.com/Oire
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function processRelativeTime(number, withoutSuffix, key, isFuture) {
+	        var format = {
+	            'm': ['eine Minute', 'einer Minute'],
+	            'h': ['eine Stunde', 'einer Stunde'],
+	            'd': ['ein Tag', 'einem Tag'],
+	            'dd': [number + ' Tage', number + ' Tagen'],
+	            'M': ['ein Monat', 'einem Monat'],
+	            'MM': [number + ' Monate', number + ' Monaten'],
+	            'y': ['ein Jahr', 'einem Jahr'],
+	            'yy': [number + ' Jahre', number + ' Jahren']
+	        };
+	        return withoutSuffix ? format[key][0] : format[key][1];
+	    }
+
+	    return moment.lang('de', {
+	        months : "Januar_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember".split("_"),
+	        monthsShort : "Jan._Febr._Mrz._Apr._Mai_Jun._Jul._Aug._Sept._Okt._Nov._Dez.".split("_"),
+	        weekdays : "Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag".split("_"),
+	        weekdaysShort : "So._Mo._Di._Mi._Do._Fr._Sa.".split("_"),
+	        weekdaysMin : "So_Mo_Di_Mi_Do_Fr_Sa".split("_"),
+	        longDateFormat : {
+	            LT: "HH:mm [Uhr]",
+	            L : "DD.MM.YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY LT",
+	            LLLL : "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[Heute um] LT",
+	            sameElse: "L",
+	            nextDay: '[Morgen um] LT',
+	            nextWeek: 'dddd [um] LT',
+	            lastDay: '[Gestern um] LT',
+	            lastWeek: '[letzten] dddd [um] LT'
+	        },
+	        relativeTime : {
+	            future : "in %s",
+	            past : "vor %s",
+	            s : "ein paar Sekunden",
+	            m : processRelativeTime,
+	            mm : "%d Minuten",
+	            h : processRelativeTime,
+	            hh : "%d Stunden",
+	            d : processRelativeTime,
+	            dd : processRelativeTime,
+	            M : processRelativeTime,
+	            MM : processRelativeTime,
+	            y : processRelativeTime,
+	            yy : processRelativeTime
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 207 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : modern greek (el)
+	// author : Aggelos Karalias : https://github.com/mehiel
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('el', {
+	        monthsNominativeEl : "Ιανουάριος_Φεβρουάριος_Μάρτιος_Απρίλιος_Μάιος_Ιούνιος_Ιούλιος_Αύγουστος_Σεπτέμβριος_Οκτώβριος_Νοέμβριος_Δεκέμβριος".split("_"),
+	        monthsGenitiveEl : "Ιανουαρίου_Φεβρουαρίου_Μαρτίου_Απριλίου_Μαΐου_Ιουνίου_Ιουλίου_Αυγούστου_Σεπτεμβρίου_Οκτωβρίου_Νοεμβρίου_Δεκεμβρίου".split("_"),
+	        months : function (momentToFormat, format) {
+	            if (/D/.test(format.substring(0, format.indexOf("MMMM")))) { // if there is a day number before 'MMMM'
+	                return this._monthsGenitiveEl[momentToFormat.month()];
+	            } else {
+	                return this._monthsNominativeEl[momentToFormat.month()];
+	            }
+	        },
+	        monthsShort : "Ιαν_Φεβ_Μαρ_Απρ_Μαϊ_Ιουν_Ιουλ_Αυγ_Σεπ_Οκτ_Νοε_Δεκ".split("_"),
+	        weekdays : "Κυριακή_Δευτέρα_Τρίτη_Τετάρτη_Πέμπτη_Παρασκευή_Σάββατο".split("_"),
+	        weekdaysShort : "Κυρ_Δευ_Τρι_Τετ_Πεμ_Παρ_Σαβ".split("_"),
+	        weekdaysMin : "Κυ_Δε_Τρ_Τε_Πε_Πα_Σα".split("_"),
+	        meridiem : function (hours, minutes, isLower) {
+	            if (hours > 11) {
+	                return isLower ? 'μμ' : 'ΜΜ';
+	            } else {
+	                return isLower ? 'πμ' : 'ΠΜ';
+	            }
+	        },
+	        longDateFormat : {
+	            LT : "h:mm A",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendarEl : {
+	            sameDay : '[Σήμερα {}] LT',
+	            nextDay : '[Αύριο {}] LT',
+	            nextWeek : 'dddd [{}] LT',
+	            lastDay : '[Χθες {}] LT',
+	            lastWeek : '[την προηγούμενη] dddd [{}] LT',
+	            sameElse : 'L'
+	        },
+	        calendar : function (key, mom) {
+	            var output = this._calendarEl[key],
+	                hours = mom && mom.hours();
+
+	            return output.replace("{}", (hours % 12 === 1 ? "στη" : "στις"));
+	        },
+	        relativeTime : {
+	            future : "σε %s",
+	            past : "%s πριν",
+	            s : "δευτερόλεπτα",
+	            m : "ένα λεπτό",
+	            mm : "%d λεπτά",
+	            h : "μία ώρα",
+	            hh : "%d ώρες",
+	            d : "μία μέρα",
+	            dd : "%d μέρες",
+	            M : "ένας μήνας",
+	            MM : "%d μήνες",
+	            y : "ένας χρόνος",
+	            yy : "%d χρόνια"
+	        },
+	        ordinal : function (number) {
+	            return number + 'η';
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 208 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : australian english (en-au)
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('en-au', {
+	        months : "January_February_March_April_May_June_July_August_September_October_November_December".split("_"),
+	        monthsShort : "Jan_Feb_Mar_Apr_May_Jun_Jul_Aug_Sep_Oct_Nov_Dec".split("_"),
+	        weekdays : "Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),
+	        weekdaysShort : "Sun_Mon_Tue_Wed_Thu_Fri_Sat".split("_"),
+	        weekdaysMin : "Su_Mo_Tu_We_Th_Fr_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "h:mm A",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Today at] LT',
+	            nextDay : '[Tomorrow at] LT',
+	            nextWeek : 'dddd [at] LT',
+	            lastDay : '[Yesterday at] LT',
+	            lastWeek : '[Last] dddd [at] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "in %s",
+	            past : "%s ago",
+	            s : "a few seconds",
+	            m : "a minute",
+	            mm : "%d minutes",
+	            h : "an hour",
+	            hh : "%d hours",
+	            d : "a day",
+	            dd : "%d days",
+	            M : "a month",
+	            MM : "%d months",
+	            y : "a year",
+	            yy : "%d years"
+	        },
+	        ordinal : function (number) {
+	            var b = number % 10,
+	                output = (~~ (number % 100 / 10) === 1) ? 'th' :
+	                (b === 1) ? 'st' :
+	                (b === 2) ? 'nd' :
+	                (b === 3) ? 'rd' : 'th';
+	            return number + output;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 209 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : canadian english (en-ca)
+	// author : Jonathan Abourbih : https://github.com/jonbca
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('en-ca', {
+	        months : "January_February_March_April_May_June_July_August_September_October_November_December".split("_"),
+	        monthsShort : "Jan_Feb_Mar_Apr_May_Jun_Jul_Aug_Sep_Oct_Nov_Dec".split("_"),
+	        weekdays : "Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),
+	        weekdaysShort : "Sun_Mon_Tue_Wed_Thu_Fri_Sat".split("_"),
+	        weekdaysMin : "Su_Mo_Tu_We_Th_Fr_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "h:mm A",
+	            L : "YYYY-MM-DD",
+	            LL : "D MMMM, YYYY",
+	            LLL : "D MMMM, YYYY LT",
+	            LLLL : "dddd, D MMMM, YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Today at] LT',
+	            nextDay : '[Tomorrow at] LT',
+	            nextWeek : 'dddd [at] LT',
+	            lastDay : '[Yesterday at] LT',
+	            lastWeek : '[Last] dddd [at] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "in %s",
+	            past : "%s ago",
+	            s : "a few seconds",
+	            m : "a minute",
+	            mm : "%d minutes",
+	            h : "an hour",
+	            hh : "%d hours",
+	            d : "a day",
+	            dd : "%d days",
+	            M : "a month",
+	            MM : "%d months",
+	            y : "a year",
+	            yy : "%d years"
+	        },
+	        ordinal : function (number) {
+	            var b = number % 10,
+	                output = (~~ (number % 100 / 10) === 1) ? 'th' :
+	                (b === 1) ? 'st' :
+	                (b === 2) ? 'nd' :
+	                (b === 3) ? 'rd' : 'th';
+	            return number + output;
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 210 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : great britain english (en-gb)
+	// author : Chris Gedrim : https://github.com/chrisgedrim
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('en-gb', {
+	        months : "January_February_March_April_May_June_July_August_September_October_November_December".split("_"),
+	        monthsShort : "Jan_Feb_Mar_Apr_May_Jun_Jul_Aug_Sep_Oct_Nov_Dec".split("_"),
+	        weekdays : "Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),
+	        weekdaysShort : "Sun_Mon_Tue_Wed_Thu_Fri_Sat".split("_"),
+	        weekdaysMin : "Su_Mo_Tu_We_Th_Fr_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Today at] LT',
+	            nextDay : '[Tomorrow at] LT',
+	            nextWeek : 'dddd [at] LT',
+	            lastDay : '[Yesterday at] LT',
+	            lastWeek : '[Last] dddd [at] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "in %s",
+	            past : "%s ago",
+	            s : "a few seconds",
+	            m : "a minute",
+	            mm : "%d minutes",
+	            h : "an hour",
+	            hh : "%d hours",
+	            d : "a day",
+	            dd : "%d days",
+	            M : "a month",
+	            MM : "%d months",
+	            y : "a year",
+	            yy : "%d years"
+	        },
+	        ordinal : function (number) {
+	            var b = number % 10,
+	                output = (~~ (number % 100 / 10) === 1) ? 'th' :
+	                (b === 1) ? 'st' :
+	                (b === 2) ? 'nd' :
+	                (b === 3) ? 'rd' : 'th';
+	            return number + output;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 211 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : esperanto (eo)
+	// author : Colin Dean : https://github.com/colindean
+	// komento: Mi estas malcerta se mi korekte traktis akuzativojn en tiu traduko.
+	//          Se ne, bonvolu korekti kaj avizi min por ke mi povas lerni!
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('eo', {
+	        months : "januaro_februaro_marto_aprilo_majo_junio_julio_aŭgusto_septembro_oktobro_novembro_decembro".split("_"),
+	        monthsShort : "jan_feb_mar_apr_maj_jun_jul_aŭg_sep_okt_nov_dec".split("_"),
+	        weekdays : "Dimanĉo_Lundo_Mardo_Merkredo_Ĵaŭdo_Vendredo_Sabato".split("_"),
+	        weekdaysShort : "Dim_Lun_Mard_Merk_Ĵaŭ_Ven_Sab".split("_"),
+	        weekdaysMin : "Di_Lu_Ma_Me_Ĵa_Ve_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "YYYY-MM-DD",
+	            LL : "D[-an de] MMMM, YYYY",
+	            LLL : "D[-an de] MMMM, YYYY LT",
+	            LLLL : "dddd, [la] D[-an de] MMMM, YYYY LT"
+	        },
+	        meridiem : function (hours, minutes, isLower) {
+	            if (hours > 11) {
+	                return isLower ? 'p.t.m.' : 'P.T.M.';
+	            } else {
+	                return isLower ? 'a.t.m.' : 'A.T.M.';
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[Hodiaŭ je] LT',
+	            nextDay : '[Morgaŭ je] LT',
+	            nextWeek : 'dddd [je] LT',
+	            lastDay : '[Hieraŭ je] LT',
+	            lastWeek : '[pasinta] dddd [je] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "je %s",
+	            past : "antaŭ %s",
+	            s : "sekundoj",
+	            m : "minuto",
+	            mm : "%d minutoj",
+	            h : "horo",
+	            hh : "%d horoj",
+	            d : "tago",//ne 'diurno', ĉar estas uzita por proksimumo
+	            dd : "%d tagoj",
+	            M : "monato",
+	            MM : "%d monatoj",
+	            y : "jaro",
+	            yy : "%d jaroj"
+	        },
+	        ordinal : "%da",
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 212 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : spanish (es)
+	// author : Julio Napurí : https://github.com/julionc
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var monthsShortDot = "ene._feb._mar._abr._may._jun._jul._ago._sep._oct._nov._dic.".split("_"),
+	        monthsShort = "ene_feb_mar_abr_may_jun_jul_ago_sep_oct_nov_dic".split("_");
+
+	    return moment.lang('es', {
+	        months : "enero_febrero_marzo_abril_mayo_junio_julio_agosto_septiembre_octubre_noviembre_diciembre".split("_"),
+	        monthsShort : function (m, format) {
+	            if (/-MMM-/.test(format)) {
+	                return monthsShort[m.month()];
+	            } else {
+	                return monthsShortDot[m.month()];
+	            }
+	        },
+	        weekdays : "domingo_lunes_martes_miércoles_jueves_viernes_sábado".split("_"),
+	        weekdaysShort : "dom._lun._mar._mié._jue._vie._sáb.".split("_"),
+	        weekdaysMin : "Do_Lu_Ma_Mi_Ju_Vi_Sá".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D [de] MMMM [del] YYYY",
+	            LLL : "D [de] MMMM [del] YYYY LT",
+	            LLLL : "dddd, D [de] MMMM [del] YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : function () {
+	                return '[hoy a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+	            },
+	            nextDay : function () {
+	                return '[mañana a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+	            },
+	            nextWeek : function () {
+	                return 'dddd [a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+	            },
+	            lastDay : function () {
+	                return '[ayer a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+	            },
+	            lastWeek : function () {
+	                return '[el] dddd [pasado a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "en %s",
+	            past : "hace %s",
+	            s : "unos segundos",
+	            m : "un minuto",
+	            mm : "%d minutos",
+	            h : "una hora",
+	            hh : "%d horas",
+	            d : "un día",
+	            dd : "%d días",
+	            M : "un mes",
+	            MM : "%d meses",
+	            y : "un año",
+	            yy : "%d años"
+	        },
+	        ordinal : '%dº',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 213 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : estonian (et)
+	// author : Henry Kehlmann : https://github.com/madhenry
+	// improvements : Illimar Tambek : https://github.com/ragulka
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function processRelativeTime(number, withoutSuffix, key, isFuture) {
+	        var format = {
+	            's' : ['mõne sekundi', 'mõni sekund', 'paar sekundit'],
+	            'm' : ['ühe minuti', 'üks minut'],
+	            'mm': [number + ' minuti', number + ' minutit'],
+	            'h' : ['ühe tunni', 'tund aega', 'üks tund'],
+	            'hh': [number + ' tunni', number + ' tundi'],
+	            'd' : ['ühe päeva', 'üks päev'],
+	            'M' : ['kuu aja', 'kuu aega', 'üks kuu'],
+	            'MM': [number + ' kuu', number + ' kuud'],
+	            'y' : ['ühe aasta', 'aasta', 'üks aasta'],
+	            'yy': [number + ' aasta', number + ' aastat']
+	        };
+	        if (withoutSuffix) {
+	            return format[key][2] ? format[key][2] : format[key][1];
+	        }
+	        return isFuture ? format[key][0] : format[key][1];
+	    }
+
+	    return moment.lang('et', {
+	        months        : "jaanuar_veebruar_märts_aprill_mai_juuni_juuli_august_september_oktoober_november_detsember".split("_"),
+	        monthsShort   : "jaan_veebr_märts_apr_mai_juuni_juuli_aug_sept_okt_nov_dets".split("_"),
+	        weekdays      : "pühapäev_esmaspäev_teisipäev_kolmapäev_neljapäev_reede_laupäev".split("_"),
+	        weekdaysShort : "P_E_T_K_N_R_L".split("_"),
+	        weekdaysMin   : "P_E_T_K_N_R_L".split("_"),
+	        longDateFormat : {
+	            LT   : "H:mm",
+	            L    : "DD.MM.YYYY",
+	            LL   : "D. MMMM YYYY",
+	            LLL  : "D. MMMM YYYY LT",
+	            LLLL : "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay  : '[Täna,] LT',
+	            nextDay  : '[Homme,] LT',
+	            nextWeek : '[Järgmine] dddd LT',
+	            lastDay  : '[Eile,] LT',
+	            lastWeek : '[Eelmine] dddd LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s pärast",
+	            past   : "%s tagasi",
+	            s      : processRelativeTime,
+	            m      : processRelativeTime,
+	            mm     : processRelativeTime,
+	            h      : processRelativeTime,
+	            hh     : processRelativeTime,
+	            d      : processRelativeTime,
+	            dd     : '%d päeva',
+	            M      : processRelativeTime,
+	            MM     : processRelativeTime,
+	            y      : processRelativeTime,
+	            yy     : processRelativeTime
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 214 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : euskara (eu)
+	// author : Eneko Illarramendi : https://github.com/eillarra
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('eu', {
+	        months : "urtarrila_otsaila_martxoa_apirila_maiatza_ekaina_uztaila_abuztua_iraila_urria_azaroa_abendua".split("_"),
+	        monthsShort : "urt._ots._mar._api._mai._eka._uzt._abu._ira._urr._aza._abe.".split("_"),
+	        weekdays : "igandea_astelehena_asteartea_asteazkena_osteguna_ostirala_larunbata".split("_"),
+	        weekdaysShort : "ig._al._ar._az._og._ol._lr.".split("_"),
+	        weekdaysMin : "ig_al_ar_az_og_ol_lr".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "YYYY-MM-DD",
+	            LL : "YYYY[ko] MMMM[ren] D[a]",
+	            LLL : "YYYY[ko] MMMM[ren] D[a] LT",
+	            LLLL : "dddd, YYYY[ko] MMMM[ren] D[a] LT",
+	            l : "YYYY-M-D",
+	            ll : "YYYY[ko] MMM D[a]",
+	            lll : "YYYY[ko] MMM D[a] LT",
+	            llll : "ddd, YYYY[ko] MMM D[a] LT"
+	        },
+	        calendar : {
+	            sameDay : '[gaur] LT[etan]',
+	            nextDay : '[bihar] LT[etan]',
+	            nextWeek : 'dddd LT[etan]',
+	            lastDay : '[atzo] LT[etan]',
+	            lastWeek : '[aurreko] dddd LT[etan]',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s barru",
+	            past : "duela %s",
+	            s : "segundo batzuk",
+	            m : "minutu bat",
+	            mm : "%d minutu",
+	            h : "ordu bat",
+	            hh : "%d ordu",
+	            d : "egun bat",
+	            dd : "%d egun",
+	            M : "hilabete bat",
+	            MM : "%d hilabete",
+	            y : "urte bat",
+	            yy : "%d urte"
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 215 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Persian Language
+	// author : Ebrahim Byagowi : https://github.com/ebraminio
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var symbolMap = {
+	        '1': '۱',
+	        '2': '۲',
+	        '3': '۳',
+	        '4': '۴',
+	        '5': '۵',
+	        '6': '۶',
+	        '7': '۷',
+	        '8': '۸',
+	        '9': '۹',
+	        '0': '۰'
+	    }, numberMap = {
+	        '۱': '1',
+	        '۲': '2',
+	        '۳': '3',
+	        '۴': '4',
+	        '۵': '5',
+	        '۶': '6',
+	        '۷': '7',
+	        '۸': '8',
+	        '۹': '9',
+	        '۰': '0'
+	    };
+
+	    return moment.lang('fa', {
+	        months : 'ژانویه_فوریه_مارس_آوریل_مه_ژوئن_ژوئیه_اوت_سپتامبر_اکتبر_نوامبر_دسامبر'.split('_'),
+	        monthsShort : 'ژانویه_فوریه_مارس_آوریل_مه_ژوئن_ژوئیه_اوت_سپتامبر_اکتبر_نوامبر_دسامبر'.split('_'),
+	        weekdays : 'یک\u200cشنبه_دوشنبه_سه\u200cشنبه_چهارشنبه_پنج\u200cشنبه_جمعه_شنبه'.split('_'),
+	        weekdaysShort : 'یک\u200cشنبه_دوشنبه_سه\u200cشنبه_چهارشنبه_پنج\u200cشنبه_جمعه_شنبه'.split('_'),
+	        weekdaysMin : 'ی_د_س_چ_پ_ج_ش'.split('_'),
+	        longDateFormat : {
+	            LT : 'HH:mm',
+	            L : 'DD/MM/YYYY',
+	            LL : 'D MMMM YYYY',
+	            LLL : 'D MMMM YYYY LT',
+	            LLLL : 'dddd, D MMMM YYYY LT'
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 12) {
+	                return "قبل از ظهر";
+	            } else {
+	                return "بعد از ظهر";
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[امروز ساعت] LT',
+	            nextDay : '[فردا ساعت] LT',
+	            nextWeek : 'dddd [ساعت] LT',
+	            lastDay : '[دیروز ساعت] LT',
+	            lastWeek : 'dddd [پیش] [ساعت] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : 'در %s',
+	            past : '%s پیش',
+	            s : 'چندین ثانیه',
+	            m : 'یک دقیقه',
+	            mm : '%d دقیقه',
+	            h : 'یک ساعت',
+	            hh : '%d ساعت',
+	            d : 'یک روز',
+	            dd : '%d روز',
+	            M : 'یک ماه',
+	            MM : '%d ماه',
+	            y : 'یک سال',
+	            yy : '%d سال'
+	        },
+	        preparse: function (string) {
+	            return string.replace(/[۰-۹]/g, function (match) {
+	                return numberMap[match];
+	            }).replace(/،/g, ',');
+	        },
+	        postformat: function (string) {
+	            return string.replace(/\d/g, function (match) {
+	                return symbolMap[match];
+	            }).replace(/,/g, '،');
+	        },
+	        ordinal : '%dم',
+	        week : {
+	            dow : 6, // Saturday is the first day of the week.
+	            doy : 12 // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 216 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : finnish (fi)
+	// author : Tarmo Aidantausta : https://github.com/bleadof
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var numbersPast = 'nolla yksi kaksi kolme neljä viisi kuusi seitsemän kahdeksan yhdeksän'.split(' '),
+	        numbersFuture = ['nolla', 'yhden', 'kahden', 'kolmen', 'neljän', 'viiden', 'kuuden',
+	                          numbersPast[7], numbersPast[8], numbersPast[9]];
+
+	    function translate(number, withoutSuffix, key, isFuture) {
+	        var result = "";
+	        switch (key) {
+	        case 's':
+	            return isFuture ? 'muutaman sekunnin' : 'muutama sekunti';
+	        case 'm':
+	            return isFuture ? 'minuutin' : 'minuutti';
+	        case 'mm':
+	            result = isFuture ? 'minuutin' : 'minuuttia';
+	            break;
+	        case 'h':
+	            return isFuture ? 'tunnin' : 'tunti';
+	        case 'hh':
+	            result = isFuture ? 'tunnin' : 'tuntia';
+	            break;
+	        case 'd':
+	            return isFuture ? 'päivän' : 'päivä';
+	        case 'dd':
+	            result = isFuture ? 'päivän' : 'päivää';
+	            break;
+	        case 'M':
+	            return isFuture ? 'kuukauden' : 'kuukausi';
+	        case 'MM':
+	            result = isFuture ? 'kuukauden' : 'kuukautta';
+	            break;
+	        case 'y':
+	            return isFuture ? 'vuoden' : 'vuosi';
+	        case 'yy':
+	            result = isFuture ? 'vuoden' : 'vuotta';
+	            break;
+	        }
+	        result = verbalNumber(number, isFuture) + " " + result;
+	        return result;
+	    }
+
+	    function verbalNumber(number, isFuture) {
+	        return number < 10 ? (isFuture ? numbersFuture[number] : numbersPast[number]) : number;
+	    }
+
+	    return moment.lang('fi', {
+	        months : "tammikuu_helmikuu_maaliskuu_huhtikuu_toukokuu_kesäkuu_heinäkuu_elokuu_syyskuu_lokakuu_marraskuu_joulukuu".split("_"),
+	        monthsShort : "tammi_helmi_maalis_huhti_touko_kesä_heinä_elo_syys_loka_marras_joulu".split("_"),
+	        weekdays : "sunnuntai_maanantai_tiistai_keskiviikko_torstai_perjantai_lauantai".split("_"),
+	        weekdaysShort : "su_ma_ti_ke_to_pe_la".split("_"),
+	        weekdaysMin : "su_ma_ti_ke_to_pe_la".split("_"),
+	        longDateFormat : {
+	            LT : "HH.mm",
+	            L : "DD.MM.YYYY",
+	            LL : "Do MMMM[ta] YYYY",
+	            LLL : "Do MMMM[ta] YYYY, [klo] LT",
+	            LLLL : "dddd, Do MMMM[ta] YYYY, [klo] LT",
+	            l : "D.M.YYYY",
+	            ll : "Do MMM YYYY",
+	            lll : "Do MMM YYYY, [klo] LT",
+	            llll : "ddd, Do MMM YYYY, [klo] LT"
+	        },
+	        calendar : {
+	            sameDay : '[tänään] [klo] LT',
+	            nextDay : '[huomenna] [klo] LT',
+	            nextWeek : 'dddd [klo] LT',
+	            lastDay : '[eilen] [klo] LT',
+	            lastWeek : '[viime] dddd[na] [klo] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s päästä",
+	            past : "%s sitten",
+	            s : translate,
+	            m : translate,
+	            mm : translate,
+	            h : translate,
+	            hh : translate,
+	            d : translate,
+	            dd : translate,
+	            M : translate,
+	            MM : translate,
+	            y : translate,
+	            yy : translate
+	        },
+	        ordinal : "%d.",
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 217 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : faroese (fo)
+	// author : Ragnar Johannesen : https://github.com/ragnar123
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('fo', {
+	        months : "januar_februar_mars_apríl_mai_juni_juli_august_september_oktober_november_desember".split("_"),
+	        monthsShort : "jan_feb_mar_apr_mai_jun_jul_aug_sep_okt_nov_des".split("_"),
+	        weekdays : "sunnudagur_mánadagur_týsdagur_mikudagur_hósdagur_fríggjadagur_leygardagur".split("_"),
+	        weekdaysShort : "sun_mán_týs_mik_hós_frí_ley".split("_"),
+	        weekdaysMin : "su_má_tý_mi_hó_fr_le".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D. MMMM, YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Í dag kl.] LT',
+	            nextDay : '[Í morgin kl.] LT',
+	            nextWeek : 'dddd [kl.] LT',
+	            lastDay : '[Í gjár kl.] LT',
+	            lastWeek : '[síðstu] dddd [kl] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "um %s",
+	            past : "%s síðani",
+	            s : "fá sekund",
+	            m : "ein minutt",
+	            mm : "%d minuttir",
+	            h : "ein tími",
+	            hh : "%d tímar",
+	            d : "ein dagur",
+	            dd : "%d dagar",
+	            M : "ein mánaði",
+	            MM : "%d mánaðir",
+	            y : "eitt ár",
+	            yy : "%d ár"
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 218 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : canadian french (fr-ca)
+	// author : Jonathan Abourbih : https://github.com/jonbca
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('fr-ca', {
+	        months : "janvier_février_mars_avril_mai_juin_juillet_août_septembre_octobre_novembre_décembre".split("_"),
+	        monthsShort : "janv._févr._mars_avr._mai_juin_juil._août_sept._oct._nov._déc.".split("_"),
+	        weekdays : "dimanche_lundi_mardi_mercredi_jeudi_vendredi_samedi".split("_"),
+	        weekdaysShort : "dim._lun._mar._mer._jeu._ven._sam.".split("_"),
+	        weekdaysMin : "Di_Lu_Ma_Me_Je_Ve_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "YYYY-MM-DD",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[Aujourd'hui à] LT",
+	            nextDay: '[Demain à] LT',
+	            nextWeek: 'dddd [à] LT',
+	            lastDay: '[Hier à] LT',
+	            lastWeek: 'dddd [dernier à] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "dans %s",
+	            past : "il y a %s",
+	            s : "quelques secondes",
+	            m : "une minute",
+	            mm : "%d minutes",
+	            h : "une heure",
+	            hh : "%d heures",
+	            d : "un jour",
+	            dd : "%d jours",
+	            M : "un mois",
+	            MM : "%d mois",
+	            y : "un an",
+	            yy : "%d ans"
+	        },
+	        ordinal : function (number) {
+	            return number + (number === 1 ? 'er' : '');
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 219 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : french (fr)
+	// author : John Fischer : https://github.com/jfroffice
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('fr', {
+	        months : "janvier_février_mars_avril_mai_juin_juillet_août_septembre_octobre_novembre_décembre".split("_"),
+	        monthsShort : "janv._févr._mars_avr._mai_juin_juil._août_sept._oct._nov._déc.".split("_"),
+	        weekdays : "dimanche_lundi_mardi_mercredi_jeudi_vendredi_samedi".split("_"),
+	        weekdaysShort : "dim._lun._mar._mer._jeu._ven._sam.".split("_"),
+	        weekdaysMin : "Di_Lu_Ma_Me_Je_Ve_Sa".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[Aujourd'hui à] LT",
+	            nextDay: '[Demain à] LT',
+	            nextWeek: 'dddd [à] LT',
+	            lastDay: '[Hier à] LT',
+	            lastWeek: 'dddd [dernier à] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "dans %s",
+	            past : "il y a %s",
+	            s : "quelques secondes",
+	            m : "une minute",
+	            mm : "%d minutes",
+	            h : "une heure",
+	            hh : "%d heures",
+	            d : "un jour",
+	            dd : "%d jours",
+	            M : "un mois",
+	            MM : "%d mois",
+	            y : "un an",
+	            yy : "%d ans"
+	        },
+	        ordinal : function (number) {
+	            return number + (number === 1 ? 'er' : '');
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 220 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : galician (gl)
+	// author : Juan G. Hurtado : https://github.com/juanghurtado
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('gl', {
+	        months : "Xaneiro_Febreiro_Marzo_Abril_Maio_Xuño_Xullo_Agosto_Setembro_Outubro_Novembro_Decembro".split("_"),
+	        monthsShort : "Xan._Feb._Mar._Abr._Mai._Xuñ._Xul._Ago._Set._Out._Nov._Dec.".split("_"),
+	        weekdays : "Domingo_Luns_Martes_Mércores_Xoves_Venres_Sábado".split("_"),
+	        weekdaysShort : "Dom._Lun._Mar._Mér._Xov._Ven._Sáb.".split("_"),
+	        weekdaysMin : "Do_Lu_Ma_Mé_Xo_Ve_Sá".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : function () {
+	                return '[hoxe ' + ((this.hours() !== 1) ? 'ás' : 'á') + '] LT';
+	            },
+	            nextDay : function () {
+	                return '[mañá ' + ((this.hours() !== 1) ? 'ás' : 'á') + '] LT';
+	            },
+	            nextWeek : function () {
+	                return 'dddd [' + ((this.hours() !== 1) ? 'ás' : 'a') + '] LT';
+	            },
+	            lastDay : function () {
+	                return '[onte ' + ((this.hours() !== 1) ? 'á' : 'a') + '] LT';
+	            },
+	            lastWeek : function () {
+	                return '[o] dddd [pasado ' + ((this.hours() !== 1) ? 'ás' : 'a') + '] LT';
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : function (str) {
+	                if (str === "uns segundos") {
+	                    return "nuns segundos";
+	                }
+	                return "en " + str;
+	            },
+	            past : "hai %s",
+	            s : "uns segundos",
+	            m : "un minuto",
+	            mm : "%d minutos",
+	            h : "unha hora",
+	            hh : "%d horas",
+	            d : "un día",
+	            dd : "%d días",
+	            M : "un mes",
+	            MM : "%d meses",
+	            y : "un ano",
+	            yy : "%d anos"
+	        },
+	        ordinal : '%dº',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 221 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Hebrew (he)
+	// author : Tomer Cohen : https://github.com/tomer
+	// author : Moshe Simantov : https://github.com/DevelopmentIL
+	// author : Tal Ater : https://github.com/TalAter
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('he', {
+	        months : "ינואר_פברואר_מרץ_אפריל_מאי_יוני_יולי_אוגוסט_ספטמבר_אוקטובר_נובמבר_דצמבר".split("_"),
+	        monthsShort : "ינו׳_פבר׳_מרץ_אפר׳_מאי_יוני_יולי_אוג׳_ספט׳_אוק׳_נוב׳_דצמ׳".split("_"),
+	        weekdays : "ראשון_שני_שלישי_רביעי_חמישי_שישי_שבת".split("_"),
+	        weekdaysShort : "א׳_ב׳_ג׳_ד׳_ה׳_ו׳_ש׳".split("_"),
+	        weekdaysMin : "א_ב_ג_ד_ה_ו_ש".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D [ב]MMMM YYYY",
+	            LLL : "D [ב]MMMM YYYY LT",
+	            LLLL : "dddd, D [ב]MMMM YYYY LT",
+	            l : "D/M/YYYY",
+	            ll : "D MMM YYYY",
+	            lll : "D MMM YYYY LT",
+	            llll : "ddd, D MMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[היום ב־]LT',
+	            nextDay : '[מחר ב־]LT',
+	            nextWeek : 'dddd [בשעה] LT',
+	            lastDay : '[אתמול ב־]LT',
+	            lastWeek : '[ביום] dddd [האחרון בשעה] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "בעוד %s",
+	            past : "לפני %s",
+	            s : "מספר שניות",
+	            m : "דקה",
+	            mm : "%d דקות",
+	            h : "שעה",
+	            hh : function (number) {
+	                if (number === 2) {
+	                    return "שעתיים";
+	                }
+	                return number + " שעות";
+	            },
+	            d : "יום",
+	            dd : function (number) {
+	                if (number === 2) {
+	                    return "יומיים";
+	                }
+	                return number + " ימים";
+	            },
+	            M : "חודש",
+	            MM : function (number) {
+	                if (number === 2) {
+	                    return "חודשיים";
+	                }
+	                return number + " חודשים";
+	            },
+	            y : "שנה",
+	            yy : function (number) {
+	                if (number === 2) {
+	                    return "שנתיים";
+	                }
+	                return number + " שנים";
+	            }
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 222 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : hindi (hi)
+	// author : Mayank Singhal : https://github.com/mayanksinghal
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var symbolMap = {
+	        '1': '१',
+	        '2': '२',
+	        '3': '३',
+	        '4': '४',
+	        '5': '५',
+	        '6': '६',
+	        '7': '७',
+	        '8': '८',
+	        '9': '९',
+	        '0': '०'
+	    },
+	    numberMap = {
+	        '१': '1',
+	        '२': '2',
+	        '३': '3',
+	        '४': '4',
+	        '५': '5',
+	        '६': '6',
+	        '७': '7',
+	        '८': '8',
+	        '९': '9',
+	        '०': '0'
+	    };
+
+	    return moment.lang('hi', {
+	        months : 'जनवरी_फ़रवरी_मार्च_अप्रैल_मई_जून_जुलाई_अगस्त_सितम्बर_अक्टूबर_नवम्बर_दिसम्बर'.split("_"),
+	        monthsShort : 'जन._फ़र._मार्च_अप्रै._मई_जून_जुल._अग._सित._अक्टू._नव._दिस.'.split("_"),
+	        weekdays : 'रविवार_सोमवार_मंगलवार_बुधवार_गुरूवार_शुक्रवार_शनिवार'.split("_"),
+	        weekdaysShort : 'रवि_सोम_मंगल_बुध_गुरू_शुक्र_शनि'.split("_"),
+	        weekdaysMin : 'र_सो_मं_बु_गु_शु_श'.split("_"),
+	        longDateFormat : {
+	            LT : "A h:mm बजे",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY, LT",
+	            LLLL : "dddd, D MMMM YYYY, LT"
+	        },
+	        calendar : {
+	            sameDay : '[आज] LT',
+	            nextDay : '[कल] LT',
+	            nextWeek : 'dddd, LT',
+	            lastDay : '[कल] LT',
+	            lastWeek : '[पिछले] dddd, LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s में",
+	            past : "%s पहले",
+	            s : "कुछ ही क्षण",
+	            m : "एक मिनट",
+	            mm : "%d मिनट",
+	            h : "एक घंटा",
+	            hh : "%d घंटे",
+	            d : "एक दिन",
+	            dd : "%d दिन",
+	            M : "एक महीने",
+	            MM : "%d महीने",
+	            y : "एक वर्ष",
+	            yy : "%d वर्ष"
+	        },
+	        preparse: function (string) {
+	            return string.replace(/[१२३४५६७८९०]/g, function (match) {
+	                return numberMap[match];
+	            });
+	        },
+	        postformat: function (string) {
+	            return string.replace(/\d/g, function (match) {
+	                return symbolMap[match];
+	            });
+	        },
+	        // Hindi notation for meridiems are quite fuzzy in practice. While there exists
+	        // a rigid notion of a 'Pahar' it is not used as rigidly in modern Hindi.
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 4) {
+	                return "रात";
+	            } else if (hour < 10) {
+	                return "सुबह";
+	            } else if (hour < 17) {
+	                return "दोपहर";
+	            } else if (hour < 20) {
+	                return "शाम";
+	            } else {
+	                return "रात";
+	            }
+	        },
+	        week : {
+	            dow : 0, // Sunday is the first day of the week.
+	            doy : 6  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 223 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : hrvatski (hr)
+	// author : Bojan Marković : https://github.com/bmarkovic
+
+	// based on (sl) translation by Robert Sedovšek
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    function translate(number, withoutSuffix, key) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 'm':
+	            return withoutSuffix ? 'jedna minuta' : 'jedne minute';
+	        case 'mm':
+	            if (number === 1) {
+	                result += 'minuta';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'minute';
+	            } else {
+	                result += 'minuta';
+	            }
+	            return result;
+	        case 'h':
+	            return withoutSuffix ? 'jedan sat' : 'jednog sata';
+	        case 'hh':
+	            if (number === 1) {
+	                result += 'sat';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'sata';
+	            } else {
+	                result += 'sati';
+	            }
+	            return result;
+	        case 'dd':
+	            if (number === 1) {
+	                result += 'dan';
+	            } else {
+	                result += 'dana';
+	            }
+	            return result;
+	        case 'MM':
+	            if (number === 1) {
+	                result += 'mjesec';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'mjeseca';
+	            } else {
+	                result += 'mjeseci';
+	            }
+	            return result;
+	        case 'yy':
+	            if (number === 1) {
+	                result += 'godina';
+	            } else if (number === 2 || number === 3 || number === 4) {
+	                result += 'godine';
+	            } else {
+	                result += 'godina';
+	            }
+	            return result;
+	        }
+	    }
+
+	    return moment.lang('hr', {
+	        months : "sječanj_veljača_ožujak_travanj_svibanj_lipanj_srpanj_kolovoz_rujan_listopad_studeni_prosinac".split("_"),
+	        monthsShort : "sje._vel._ožu._tra._svi._lip._srp._kol._ruj._lis._stu._pro.".split("_"),
+	        weekdays : "nedjelja_ponedjeljak_utorak_srijeda_četvrtak_petak_subota".split("_"),
+	        weekdaysShort : "ned._pon._uto._sri._čet._pet._sub.".split("_"),
+	        weekdaysMin : "ne_po_ut_sr_če_pe_su".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD. MM. YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY LT",
+	            LLLL : "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay  : '[danas u] LT',
+	            nextDay  : '[sutra u] LT',
+
+	            nextWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[u] [nedjelju] [u] LT';
+	                case 3:
+	                    return '[u] [srijedu] [u] LT';
+	                case 6:
+	                    return '[u] [subotu] [u] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[u] dddd [u] LT';
+	                }
+	            },
+	            lastDay  : '[jučer u] LT',
+	            lastWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                case 3:
+	                    return '[prošlu] dddd [u] LT';
+	                case 6:
+	                    return '[prošle] [subote] [u] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[prošli] dddd [u] LT';
+	                }
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "za %s",
+	            past   : "prije %s",
+	            s      : "par sekundi",
+	            m      : translate,
+	            mm     : translate,
+	            h      : translate,
+	            hh     : translate,
+	            d      : "dan",
+	            dd     : translate,
+	            M      : "mjesec",
+	            MM     : translate,
+	            y      : "godinu",
+	            yy     : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 224 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : hungarian (hu)
+	// author : Adam Brunner : https://github.com/adambrunner
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var weekEndings = 'vasárnap hétfőn kedden szerdán csütörtökön pénteken szombaton'.split(' ');
+
+	    function translate(number, withoutSuffix, key, isFuture) {
+	        var num = number,
+	            suffix;
+
+	        switch (key) {
+	        case 's':
+	            return (isFuture || withoutSuffix) ? 'néhány másodperc' : 'néhány másodperce';
+	        case 'm':
+	            return 'egy' + (isFuture || withoutSuffix ? ' perc' : ' perce');
+	        case 'mm':
+	            return num + (isFuture || withoutSuffix ? ' perc' : ' perce');
+	        case 'h':
+	            return 'egy' + (isFuture || withoutSuffix ? ' óra' : ' órája');
+	        case 'hh':
+	            return num + (isFuture || withoutSuffix ? ' óra' : ' órája');
+	        case 'd':
+	            return 'egy' + (isFuture || withoutSuffix ? ' nap' : ' napja');
+	        case 'dd':
+	            return num + (isFuture || withoutSuffix ? ' nap' : ' napja');
+	        case 'M':
+	            return 'egy' + (isFuture || withoutSuffix ? ' hónap' : ' hónapja');
+	        case 'MM':
+	            return num + (isFuture || withoutSuffix ? ' hónap' : ' hónapja');
+	        case 'y':
+	            return 'egy' + (isFuture || withoutSuffix ? ' év' : ' éve');
+	        case 'yy':
+	            return num + (isFuture || withoutSuffix ? ' év' : ' éve');
+	        }
+
+	        return '';
+	    }
+
+	    function week(isFuture) {
+	        return (isFuture ? '' : '[múlt] ') + '[' + weekEndings[this.day()] + '] LT[-kor]';
+	    }
+
+	    return moment.lang('hu', {
+	        months : "január_február_március_április_május_június_július_augusztus_szeptember_október_november_december".split("_"),
+	        monthsShort : "jan_feb_márc_ápr_máj_jún_júl_aug_szept_okt_nov_dec".split("_"),
+	        weekdays : "vasárnap_hétfő_kedd_szerda_csütörtök_péntek_szombat".split("_"),
+	        weekdaysShort : "vas_hét_kedd_sze_csüt_pén_szo".split("_"),
+	        weekdaysMin : "v_h_k_sze_cs_p_szo".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "YYYY.MM.DD.",
+	            LL : "YYYY. MMMM D.",
+	            LLL : "YYYY. MMMM D., LT",
+	            LLLL : "YYYY. MMMM D., dddd LT"
+	        },
+	        meridiem : function (hours, minutes, isLower) {
+	            if (hours < 12) {
+	                return isLower === true ? 'de' : 'DE';
+	            } else {
+	                return isLower === true ? 'du' : 'DU';
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[ma] LT[-kor]',
+	            nextDay : '[holnap] LT[-kor]',
+	            nextWeek : function () {
+	                return week.call(this, true);
+	            },
+	            lastDay : '[tegnap] LT[-kor]',
+	            lastWeek : function () {
+	                return week.call(this, false);
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s múlva",
+	            past : "%s",
+	            s : translate,
+	            m : translate,
+	            mm : translate,
+	            h : translate,
+	            hh : translate,
+	            d : translate,
+	            dd : translate,
+	            M : translate,
+	            MM : translate,
+	            y : translate,
+	            yy : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 225 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Armenian (hy-am)
+	// author : Armendarabyan : https://github.com/armendarabyan
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    function monthsCaseReplace(m, format) {
+	        var months = {
+	            'nominative': 'հունվար_փետրվար_մարտ_ապրիլ_մայիս_հունիս_հուլիս_օգոստոս_սեպտեմբեր_հոկտեմբեր_նոյեմբեր_դեկտեմբեր'.split('_'),
+	            'accusative': 'հունվարի_փետրվարի_մարտի_ապրիլի_մայիսի_հունիսի_հուլիսի_օգոստոսի_սեպտեմբերի_հոկտեմբերի_նոյեմբերի_դեկտեմբերի'.split('_')
+	        },
+
+	        nounCase = (/D[oD]?(\[[^\[\]]*\]|\s+)+MMMM?/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return months[nounCase][m.month()];
+	    }
+
+	    function monthsShortCaseReplace(m, format) {
+	        var monthsShort = 'հնվ_փտր_մրտ_ապր_մյս_հնս_հլս_օգս_սպտ_հկտ_նմբ_դկտ'.split('_');
+
+	        return monthsShort[m.month()];
+	    }
+
+	    function weekdaysCaseReplace(m, format) {
+	        var weekdays = 'կիրակի_երկուշաբթի_երեքշաբթի_չորեքշաբթի_հինգշաբթի_ուրբաթ_շաբաթ'.split('_');
+
+	        return weekdays[m.day()];
+	    }
+
+	    return moment.lang('hy-am', {
+	        months : monthsCaseReplace,
+	        monthsShort : monthsShortCaseReplace,
+	        weekdays : weekdaysCaseReplace,
+	        weekdaysShort : "կրկ_երկ_երք_չրք_հնգ_ուրբ_շբթ".split("_"),
+	        weekdaysMin : "կրկ_երկ_երք_չրք_հնգ_ուրբ_շբթ".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY թ.",
+	            LLL : "D MMMM YYYY թ., LT",
+	            LLLL : "dddd, D MMMM YYYY թ., LT"
+	        },
+	        calendar : {
+	            sameDay: '[այսօր] LT',
+	            nextDay: '[վաղը] LT',
+	            lastDay: '[երեկ] LT',
+	            nextWeek: function () {
+	                return 'dddd [օրը ժամը] LT';
+	            },
+	            lastWeek: function () {
+	                return '[անցած] dddd [օրը ժամը] LT';
+	            },
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "%s հետո",
+	            past : "%s առաջ",
+	            s : "մի քանի վայրկյան",
+	            m : "րոպե",
+	            mm : "%d րոպե",
+	            h : "ժամ",
+	            hh : "%d ժամ",
+	            d : "օր",
+	            dd : "%d օր",
+	            M : "ամիս",
+	            MM : "%d ամիս",
+	            y : "տարի",
+	            yy : "%d տարի"
+	        },
+
+	        meridiem : function (hour) {
+	            if (hour < 4) {
+	                return "գիշերվա";
+	            } else if (hour < 12) {
+	                return "առավոտվա";
+	            } else if (hour < 17) {
+	                return "ցերեկվա";
+	            } else {
+	                return "երեկոյան";
+	            }
+	        },
+
+	        ordinal: function (number, period) {
+	            switch (period) {
+	            case 'DDD':
+	            case 'w':
+	            case 'W':
+	            case 'DDDo':
+	                if (number === 1) {
+	                    return number + '-ին';
+	                }
+	                return number + '-րդ';
+	            default:
+	                return number;
+	            }
+	        },
+
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 226 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Bahasa Indonesia (id)
+	// author : Mohammad Satrio Utomo : https://github.com/tyok
+	// reference: http://id.wikisource.org/wiki/Pedoman_Umum_Ejaan_Bahasa_Indonesia_yang_Disempurnakan
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('id', {
+	        months : "Januari_Februari_Maret_April_Mei_Juni_Juli_Agustus_September_Oktober_November_Desember".split("_"),
+	        monthsShort : "Jan_Feb_Mar_Apr_Mei_Jun_Jul_Ags_Sep_Okt_Nov_Des".split("_"),
+	        weekdays : "Minggu_Senin_Selasa_Rabu_Kamis_Jumat_Sabtu".split("_"),
+	        weekdaysShort : "Min_Sen_Sel_Rab_Kam_Jum_Sab".split("_"),
+	        weekdaysMin : "Mg_Sn_Sl_Rb_Km_Jm_Sb".split("_"),
+	        longDateFormat : {
+	            LT : "HH.mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY [pukul] LT",
+	            LLLL : "dddd, D MMMM YYYY [pukul] LT"
+	        },
+	        meridiem : function (hours, minutes, isLower) {
+	            if (hours < 11) {
+	                return 'pagi';
+	            } else if (hours < 15) {
+	                return 'siang';
+	            } else if (hours < 19) {
+	                return 'sore';
+	            } else {
+	                return 'malam';
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[Hari ini pukul] LT',
+	            nextDay : '[Besok pukul] LT',
+	            nextWeek : 'dddd [pukul] LT',
+	            lastDay : '[Kemarin pukul] LT',
+	            lastWeek : 'dddd [lalu pukul] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "dalam %s",
+	            past : "%s yang lalu",
+	            s : "beberapa detik",
+	            m : "semenit",
+	            mm : "%d menit",
+	            h : "sejam",
+	            hh : "%d jam",
+	            d : "sehari",
+	            dd : "%d hari",
+	            M : "sebulan",
+	            MM : "%d bulan",
+	            y : "setahun",
+	            yy : "%d tahun"
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 227 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : icelandic (is)
+	// author : Hinrik Örn Sigurðsson : https://github.com/hinrik
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function plural(n) {
+	        if (n % 100 === 11) {
+	            return true;
+	        } else if (n % 10 === 1) {
+	            return false;
+	        }
+	        return true;
+	    }
+
+	    function translate(number, withoutSuffix, key, isFuture) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 's':
+	            return withoutSuffix || isFuture ? 'nokkrar sekúndur' : 'nokkrum sekúndum';
+	        case 'm':
+	            return withoutSuffix ? 'mínúta' : 'mínútu';
+	        case 'mm':
+	            if (plural(number)) {
+	                return result + (withoutSuffix || isFuture ? 'mínútur' : 'mínútum');
+	            } else if (withoutSuffix) {
+	                return result + 'mínúta';
+	            }
+	            return result + 'mínútu';
+	        case 'hh':
+	            if (plural(number)) {
+	                return result + (withoutSuffix || isFuture ? 'klukkustundir' : 'klukkustundum');
+	            }
+	            return result + 'klukkustund';
+	        case 'd':
+	            if (withoutSuffix) {
+	                return 'dagur';
+	            }
+	            return isFuture ? 'dag' : 'degi';
+	        case 'dd':
+	            if (plural(number)) {
+	                if (withoutSuffix) {
+	                    return result + 'dagar';
+	                }
+	                return result + (isFuture ? 'daga' : 'dögum');
+	            } else if (withoutSuffix) {
+	                return result + 'dagur';
+	            }
+	            return result + (isFuture ? 'dag' : 'degi');
+	        case 'M':
+	            if (withoutSuffix) {
+	                return 'mánuður';
+	            }
+	            return isFuture ? 'mánuð' : 'mánuði';
+	        case 'MM':
+	            if (plural(number)) {
+	                if (withoutSuffix) {
+	                    return result + 'mánuðir';
+	                }
+	                return result + (isFuture ? 'mánuði' : 'mánuðum');
+	            } else if (withoutSuffix) {
+	                return result + 'mánuður';
+	            }
+	            return result + (isFuture ? 'mánuð' : 'mánuði');
+	        case 'y':
+	            return withoutSuffix || isFuture ? 'ár' : 'ári';
+	        case 'yy':
+	            if (plural(number)) {
+	                return result + (withoutSuffix || isFuture ? 'ár' : 'árum');
+	            }
+	            return result + (withoutSuffix || isFuture ? 'ár' : 'ári');
+	        }
+	    }
+
+	    return moment.lang('is', {
+	        months : "janúar_febrúar_mars_apríl_maí_júní_júlí_ágúst_september_október_nóvember_desember".split("_"),
+	        monthsShort : "jan_feb_mar_apr_maí_jún_júl_ágú_sep_okt_nóv_des".split("_"),
+	        weekdays : "sunnudagur_mánudagur_þriðjudagur_miðvikudagur_fimmtudagur_föstudagur_laugardagur".split("_"),
+	        weekdaysShort : "sun_mán_þri_mið_fim_fös_lau".split("_"),
+	        weekdaysMin : "Su_Má_Þr_Mi_Fi_Fö_La".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY [kl.] LT",
+	            LLLL : "dddd, D. MMMM YYYY [kl.] LT"
+	        },
+	        calendar : {
+	            sameDay : '[í dag kl.] LT',
+	            nextDay : '[á morgun kl.] LT',
+	            nextWeek : 'dddd [kl.] LT',
+	            lastDay : '[í gær kl.] LT',
+	            lastWeek : '[síðasta] dddd [kl.] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "eftir %s",
+	            past : "fyrir %s síðan",
+	            s : translate,
+	            m : translate,
+	            mm : translate,
+	            h : "klukkustund",
+	            hh : translate,
+	            d : translate,
+	            dd : translate,
+	            M : translate,
+	            MM : translate,
+	            y : translate,
+	            yy : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 228 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : italian (it)
+	// author : Lorenzo : https://github.com/aliem
+	// author: Mattia Larentis: https://github.com/nostalgiaz
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('it', {
+	        months : "Gennaio_Febbraio_Marzo_Aprile_Maggio_Giugno_Luglio_Agosto_Settembre_Ottobre_Novembre_Dicembre".split("_"),
+	        monthsShort : "Gen_Feb_Mar_Apr_Mag_Giu_Lug_Ago_Set_Ott_Nov_Dic".split("_"),
+	        weekdays : "Domenica_Lunedì_Martedì_Mercoledì_Giovedì_Venerdì_Sabato".split("_"),
+	        weekdaysShort : "Dom_Lun_Mar_Mer_Gio_Ven_Sab".split("_"),
+	        weekdaysMin : "D_L_Ma_Me_G_V_S".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: '[Oggi alle] LT',
+	            nextDay: '[Domani alle] LT',
+	            nextWeek: 'dddd [alle] LT',
+	            lastDay: '[Ieri alle] LT',
+	            lastWeek: '[lo scorso] dddd [alle] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : function (s) {
+	                return ((/^[0-9].+$/).test(s) ? "tra" : "in") + " " + s;
+	            },
+	            past : "%s fa",
+	            s : "alcuni secondi",
+	            m : "un minuto",
+	            mm : "%d minuti",
+	            h : "un'ora",
+	            hh : "%d ore",
+	            d : "un giorno",
+	            dd : "%d giorni",
+	            M : "un mese",
+	            MM : "%d mesi",
+	            y : "un anno",
+	            yy : "%d anni"
+	        },
+	        ordinal: '%dº',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 229 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : japanese (ja)
+	// author : LI Long : https://github.com/baryon
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ja', {
+	        months : "1月_2月_3月_4月_5月_6月_7月_8月_9月_10月_11月_12月".split("_"),
+	        monthsShort : "1月_2月_3月_4月_5月_6月_7月_8月_9月_10月_11月_12月".split("_"),
+	        weekdays : "日曜日_月曜日_火曜日_水曜日_木曜日_金曜日_土曜日".split("_"),
+	        weekdaysShort : "日_月_火_水_木_金_土".split("_"),
+	        weekdaysMin : "日_月_火_水_木_金_土".split("_"),
+	        longDateFormat : {
+	            LT : "Ah時m分",
+	            L : "YYYY/MM/DD",
+	            LL : "YYYY年M月D日",
+	            LLL : "YYYY年M月D日LT",
+	            LLLL : "YYYY年M月D日LT dddd"
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 12) {
+	                return "午前";
+	            } else {
+	                return "午後";
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[今日] LT',
+	            nextDay : '[明日] LT',
+	            nextWeek : '[来週]dddd LT',
+	            lastDay : '[昨日] LT',
+	            lastWeek : '[前週]dddd LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s後",
+	            past : "%s前",
+	            s : "数秒",
+	            m : "1分",
+	            mm : "%d分",
+	            h : "1時間",
+	            hh : "%d時間",
+	            d : "1日",
+	            dd : "%d日",
+	            M : "1ヶ月",
+	            MM : "%dヶ月",
+	            y : "1年",
+	            yy : "%d年"
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 230 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Georgian (ka)
+	// author : Irakli Janiashvili : https://github.com/irakli-janiashvili
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    function monthsCaseReplace(m, format) {
+	        var months = {
+	            'nominative': 'იანვარი_თებერვალი_მარტი_აპრილი_მაისი_ივნისი_ივლისი_აგვისტო_სექტემბერი_ოქტომბერი_ნოემბერი_დეკემბერი'.split('_'),
+	            'accusative': 'იანვარს_თებერვალს_მარტს_აპრილის_მაისს_ივნისს_ივლისს_აგვისტს_სექტემბერს_ოქტომბერს_ნოემბერს_დეკემბერს'.split('_')
+	        },
+
+	        nounCase = (/D[oD] *MMMM?/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return months[nounCase][m.month()];
+	    }
+
+	    function weekdaysCaseReplace(m, format) {
+	        var weekdays = {
+	            'nominative': 'კვირა_ორშაბათი_სამშაბათი_ოთხშაბათი_ხუთშაბათი_პარასკევი_შაბათი'.split('_'),
+	            'accusative': 'კვირას_ორშაბათს_სამშაბათს_ოთხშაბათს_ხუთშაბათს_პარასკევს_შაბათს'.split('_')
+	        },
+
+	        nounCase = (/(წინა|შემდეგ)/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return weekdays[nounCase][m.day()];
+	    }
+
+	    return moment.lang('ka', {
+	        months : monthsCaseReplace,
+	        monthsShort : "იან_თებ_მარ_აპრ_მაი_ივნ_ივლ_აგვ_სექ_ოქტ_ნოე_დეკ".split("_"),
+	        weekdays : weekdaysCaseReplace,
+	        weekdaysShort : "კვი_ორშ_სამ_ოთხ_ხუთ_პარ_შაბ".split("_"),
+	        weekdaysMin : "კვ_ორ_სა_ოთ_ხუ_პა_შა".split("_"),
+	        longDateFormat : {
+	            LT : "h:mm A",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[დღეს] LT[-ზე]',
+	            nextDay : '[ხვალ] LT[-ზე]',
+	            lastDay : '[გუშინ] LT[-ზე]',
+	            nextWeek : '[შემდეგ] dddd LT[-ზე]',
+	            lastWeek : '[წინა] dddd LT-ზე',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : function (s) {
+	                return (/(წამი|წუთი|საათი|წელი)/).test(s) ?
+	                    s.replace(/ი$/, "ში") :
+	                    s + "ში";
+	            },
+	            past : function (s) {
+	                if ((/(წამი|წუთი|საათი|დღე|თვე)/).test(s)) {
+	                    return s.replace(/(ი|ე)$/, "ის წინ");
+	                }
+	                if ((/წელი/).test(s)) {
+	                    return s.replace(/წელი$/, "წლის წინ");
+	                }
+	            },
+	            s : "რამდენიმე წამი",
+	            m : "წუთი",
+	            mm : "%d წუთი",
+	            h : "საათი",
+	            hh : "%d საათი",
+	            d : "დღე",
+	            dd : "%d დღე",
+	            M : "თვე",
+	            MM : "%d თვე",
+	            y : "წელი",
+	            yy : "%d წელი"
+	        },
+	        ordinal : function (number) {
+	            if (number === 0) {
+	                return number;
+	            }
+
+	            if (number === 1) {
+	                return number + "-ლი";
+	            }
+
+	            if ((number < 20) || (number <= 100 && (number % 20 === 0)) || (number % 100 === 0)) {
+	                return "მე-" + number;
+	            }
+
+	            return number + "-ე";
+	        },
+	        week : {
+	            dow : 1,
+	            doy : 7
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 231 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : khmer (km)
+	// author : Kruy Vanna : https://github.com/kruyvanna
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('km', {
+	        months: "មករា_កុម្ភៈ_មិនា_មេសា_ឧសភា_មិថុនា_កក្កដា_សីហា_កញ្ញា_តុលា_វិច្ឆិកា_ធ្នូ".split("_"),
+	        monthsShort: "មករា_កុម្ភៈ_មិនា_មេសា_ឧសភា_មិថុនា_កក្កដា_សីហា_កញ្ញា_តុលា_វិច្ឆិកា_ធ្នូ".split("_"),
+	        weekdays: "អាទិត្យ_ច័ន្ទ_អង្គារ_ពុធ_ព្រហស្បតិ៍_សុក្រ_សៅរ៍".split("_"),
+	        weekdaysShort: "អាទិត្យ_ច័ន្ទ_អង្គារ_ពុធ_ព្រហស្បតិ៍_សុក្រ_សៅរ៍".split("_"),
+	        weekdaysMin: "អាទិត្យ_ច័ន្ទ_អង្គារ_ពុធ_ព្រហស្បតិ៍_សុក្រ_សៅរ៍".split("_"),
+	        longDateFormat: {
+	            LT: "HH:mm",
+	            L: "DD/MM/YYYY",
+	            LL: "D MMMM YYYY",
+	            LLL: "D MMMM YYYY LT",
+	            LLLL: "dddd, D MMMM YYYY LT"
+	        },
+	        calendar: {
+	            sameDay: '[ថ្ងៃនៈ ម៉ោង] LT',
+	            nextDay: '[ស្អែក ម៉ោង] LT',
+	            nextWeek: 'dddd [ម៉ោង] LT',
+	            lastDay: '[ម្សិលមិញ ម៉ោង] LT',
+	            lastWeek: 'dddd [សប្តាហ៍មុន] [ម៉ោង] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime: {
+	            future: "%sទៀត",
+	            past: "%sមុន",
+	            s: "ប៉ុន្មានវិនាទី",
+	            m: "មួយនាទី",
+	            mm: "%d នាទី",
+	            h: "មួយម៉ោង",
+	            hh: "%d ម៉ោង",
+	            d: "មួយថ្ងៃ",
+	            dd: "%d ថ្ងៃ",
+	            M: "មួយខែ",
+	            MM: "%d ខែ",
+	            y: "មួយឆ្នាំ",
+	            yy: "%d ឆ្នាំ"
+	        },
+	        week: {
+	            dow: 1, // Monday is the first day of the week.
+	            doy: 4 // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 232 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : korean (ko)
+	//
+	// authors 
+	//
+	// - Kyungwook, Park : https://github.com/kyungw00k
+	// - Jeeeyul Lee <jeeeyul@gmail.com>
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ko', {
+	        months : "1월_2월_3월_4월_5월_6월_7월_8월_9월_10월_11월_12월".split("_"),
+	        monthsShort : "1월_2월_3월_4월_5월_6월_7월_8월_9월_10월_11월_12월".split("_"),
+	        weekdays : "일요일_월요일_화요일_수요일_목요일_금요일_토요일".split("_"),
+	        weekdaysShort : "일_월_화_수_목_금_토".split("_"),
+	        weekdaysMin : "일_월_화_수_목_금_토".split("_"),
+	        longDateFormat : {
+	            LT : "A h시 mm분",
+	            L : "YYYY.MM.DD",
+	            LL : "YYYY년 MMMM D일",
+	            LLL : "YYYY년 MMMM D일 LT",
+	            LLLL : "YYYY년 MMMM D일 dddd LT"
+	        },
+	        meridiem : function (hour, minute, isUpper) {
+	            return hour < 12 ? '오전' : '오후';
+	        },
+	        calendar : {
+	            sameDay : '오늘 LT',
+	            nextDay : '내일 LT',
+	            nextWeek : 'dddd LT',
+	            lastDay : '어제 LT',
+	            lastWeek : '지난주 dddd LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s 후",
+	            past : "%s 전",
+	            s : "몇초",
+	            ss : "%d초",
+	            m : "일분",
+	            mm : "%d분",
+	            h : "한시간",
+	            hh : "%d시간",
+	            d : "하루",
+	            dd : "%d일",
+	            M : "한달",
+	            MM : "%d달",
+	            y : "일년",
+	            yy : "%d년"
+	        },
+	        ordinal : '%d일',
+	        meridiemParse : /(오전|오후)/,
+	        isPM : function (token) {
+	            return token === "오후";
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 233 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Luxembourgish (lb)
+	// author : mweimerskirch : https://github.com/mweimerskirch
+
+	// Note: Luxembourgish has a very particular phonological rule ("Eifeler Regel") that causes the
+	// deletion of the final "n" in certain contexts. That's what the "eifelerRegelAppliesToWeekday"
+	// and "eifelerRegelAppliesToNumber" methods are meant for
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function processRelativeTime(number, withoutSuffix, key, isFuture) {
+	        var format = {
+	            'm': ['eng Minutt', 'enger Minutt'],
+	            'h': ['eng Stonn', 'enger Stonn'],
+	            'd': ['een Dag', 'engem Dag'],
+	            'dd': [number + ' Deeg', number + ' Deeg'],
+	            'M': ['ee Mount', 'engem Mount'],
+	            'MM': [number + ' Méint', number + ' Méint'],
+	            'y': ['ee Joer', 'engem Joer'],
+	            'yy': [number + ' Joer', number + ' Joer']
+	        };
+	        return withoutSuffix ? format[key][0] : format[key][1];
+	    }
+
+	    function processFutureTime(string) {
+	        var number = string.substr(0, string.indexOf(' '));
+	        if (eifelerRegelAppliesToNumber(number)) {
+	            return "a " + string;
+	        }
+	        return "an " + string;
+	    }
+
+	    function processPastTime(string) {
+	        var number = string.substr(0, string.indexOf(' '));
+	        if (eifelerRegelAppliesToNumber(number)) {
+	            return "viru " + string;
+	        }
+	        return "virun " + string;
+	    }
+
+	    function processLastWeek(string1) {
+	        var weekday = this.format('d');
+	        if (eifelerRegelAppliesToWeekday(weekday)) {
+	            return '[Leschte] dddd [um] LT';
+	        }
+	        return '[Leschten] dddd [um] LT';
+	    }
+
+	    /**
+	     * Returns true if the word before the given week day loses the "-n" ending.
+	     * e.g. "Leschten Dënschdeg" but "Leschte Méindeg"
+	     *
+	     * @param weekday {integer}
+	     * @returns {boolean}
+	     */
+	    function eifelerRegelAppliesToWeekday(weekday) {
+	        weekday = parseInt(weekday, 10);
+	        switch (weekday) {
+	        case 0: // Sonndeg
+	        case 1: // Méindeg
+	        case 3: // Mëttwoch
+	        case 5: // Freideg
+	        case 6: // Samschdeg
+	            return true;
+	        default: // 2 Dënschdeg, 4 Donneschdeg
+	            return false;
+	        }
+	    }
+
+	    /**
+	     * Returns true if the word before the given number loses the "-n" ending.
+	     * e.g. "an 10 Deeg" but "a 5 Deeg"
+	     *
+	     * @param number {integer}
+	     * @returns {boolean}
+	     */
+	    function eifelerRegelAppliesToNumber(number) {
+	        number = parseInt(number, 10);
+	        if (isNaN(number)) {
+	            return false;
+	        }
+	        if (number < 0) {
+	            // Negative Number --> always true
+	            return true;
+	        } else if (number < 10) {
+	            // Only 1 digit
+	            if (4 <= number && number <= 7) {
+	                return true;
+	            }
+	            return false;
+	        } else if (number < 100) {
+	            // 2 digits
+	            var lastDigit = number % 10, firstDigit = number / 10;
+	            if (lastDigit === 0) {
+	                return eifelerRegelAppliesToNumber(firstDigit);
+	            }
+	            return eifelerRegelAppliesToNumber(lastDigit);
+	        } else if (number < 10000) {
+	            // 3 or 4 digits --> recursively check first digit
+	            while (number >= 10) {
+	                number = number / 10;
+	            }
+	            return eifelerRegelAppliesToNumber(number);
+	        } else {
+	            // Anything larger than 4 digits: recursively check first n-3 digits
+	            number = number / 1000;
+	            return eifelerRegelAppliesToNumber(number);
+	        }
+	    }
+
+	    return moment.lang('lb', {
+	        months: "Januar_Februar_Mäerz_Abrëll_Mee_Juni_Juli_August_September_Oktober_November_Dezember".split("_"),
+	        monthsShort: "Jan._Febr._Mrz._Abr._Mee_Jun._Jul._Aug._Sept._Okt._Nov._Dez.".split("_"),
+	        weekdays: "Sonndeg_Méindeg_Dënschdeg_Mëttwoch_Donneschdeg_Freideg_Samschdeg".split("_"),
+	        weekdaysShort: "So._Mé._Dë._Më._Do._Fr._Sa.".split("_"),
+	        weekdaysMin: "So_Mé_Dë_Më_Do_Fr_Sa".split("_"),
+	        longDateFormat: {
+	            LT: "H:mm [Auer]",
+	            L: "DD.MM.YYYY",
+	            LL: "D. MMMM YYYY",
+	            LLL: "D. MMMM YYYY LT",
+	            LLLL: "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar: {
+	            sameDay: "[Haut um] LT",
+	            sameElse: "L",
+	            nextDay: '[Muer um] LT',
+	            nextWeek: 'dddd [um] LT',
+	            lastDay: '[Gëschter um] LT',
+	            lastWeek: processLastWeek
+	        },
+	        relativeTime: {
+	            future: processFutureTime,
+	            past: processPastTime,
+	            s: "e puer Sekonnen",
+	            m: processRelativeTime,
+	            mm: "%d Minutten",
+	            h: processRelativeTime,
+	            hh: "%d Stonnen",
+	            d: processRelativeTime,
+	            dd: processRelativeTime,
+	            M: processRelativeTime,
+	            MM: processRelativeTime,
+	            y: processRelativeTime,
+	            yy: processRelativeTime
+	        },
+	        ordinal: '%d.',
+	        week: {
+	            dow: 1, // Monday is the first day of the week.
+	            doy: 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 234 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Lithuanian (lt)
+	// author : Mindaugas Mozūras : https://github.com/mmozuras
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var units = {
+	        "m" : "minutė_minutės_minutę",
+	        "mm": "minutės_minučių_minutes",
+	        "h" : "valanda_valandos_valandą",
+	        "hh": "valandos_valandų_valandas",
+	        "d" : "diena_dienos_dieną",
+	        "dd": "dienos_dienų_dienas",
+	        "M" : "mėnuo_mėnesio_mėnesį",
+	        "MM": "mėnesiai_mėnesių_mėnesius",
+	        "y" : "metai_metų_metus",
+	        "yy": "metai_metų_metus"
+	    },
+	    weekDays = "pirmadienis_antradienis_trečiadienis_ketvirtadienis_penktadienis_šeštadienis_sekmadienis".split("_");
+
+	    function translateSeconds(number, withoutSuffix, key, isFuture) {
+	        if (withoutSuffix) {
+	            return "kelios sekundės";
+	        } else {
+	            return isFuture ? "kelių sekundžių" : "kelias sekundes";
+	        }
+	    }
+
+	    function translateSingular(number, withoutSuffix, key, isFuture) {
+	        return withoutSuffix ? forms(key)[0] : (isFuture ? forms(key)[1] : forms(key)[2]);
+	    }
+
+	    function special(number) {
+	        return number % 10 === 0 || (number > 10 && number < 20);
+	    }
+
+	    function forms(key) {
+	        return units[key].split("_");
+	    }
+
+	    function translate(number, withoutSuffix, key, isFuture) {
+	        var result = number + " ";
+	        if (number === 1) {
+	            return result + translateSingular(number, withoutSuffix, key[0], isFuture);
+	        } else if (withoutSuffix) {
+	            return result + (special(number) ? forms(key)[1] : forms(key)[0]);
+	        } else {
+	            if (isFuture) {
+	                return result + forms(key)[1];
+	            } else {
+	                return result + (special(number) ? forms(key)[1] : forms(key)[2]);
+	            }
+	        }
+	    }
+
+	    function relativeWeekDay(moment, format) {
+	        var nominative = format.indexOf('dddd HH:mm') === -1,
+	            weekDay = weekDays[moment.weekday()];
+
+	        return nominative ? weekDay : weekDay.substring(0, weekDay.length - 2) + "į";
+	    }
+
+	    return moment.lang("lt", {
+	        months : "sausio_vasario_kovo_balandžio_gegužės_biržėlio_liepos_rugpjūčio_rugsėjo_spalio_lapkričio_gruodžio".split("_"),
+	        monthsShort : "sau_vas_kov_bal_geg_bir_lie_rgp_rgs_spa_lap_grd".split("_"),
+	        weekdays : relativeWeekDay,
+	        weekdaysShort : "Sek_Pir_Ant_Tre_Ket_Pen_Šeš".split("_"),
+	        weekdaysMin : "S_P_A_T_K_Pn_Š".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "YYYY-MM-DD",
+	            LL : "YYYY [m.] MMMM D [d.]",
+	            LLL : "YYYY [m.] MMMM D [d.], LT [val.]",
+	            LLLL : "YYYY [m.] MMMM D [d.], dddd, LT [val.]",
+	            l : "YYYY-MM-DD",
+	            ll : "YYYY [m.] MMMM D [d.]",
+	            lll : "YYYY [m.] MMMM D [d.], LT [val.]",
+	            llll : "YYYY [m.] MMMM D [d.], ddd, LT [val.]"
+	        },
+	        calendar : {
+	            sameDay : "[Šiandien] LT",
+	            nextDay : "[Rytoj] LT",
+	            nextWeek : "dddd LT",
+	            lastDay : "[Vakar] LT",
+	            lastWeek : "[Praėjusį] dddd LT",
+	            sameElse : "L"
+	        },
+	        relativeTime : {
+	            future : "po %s",
+	            past : "prieš %s",
+	            s : translateSeconds,
+	            m : translateSingular,
+	            mm : translate,
+	            h : translateSingular,
+	            hh : translate,
+	            d : translateSingular,
+	            dd : translate,
+	            M : translateSingular,
+	            MM : translate,
+	            y : translateSingular,
+	            yy : translate
+	        },
+	        ordinal : function (number) {
+	            return number + '-oji';
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 235 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : latvian (lv)
+	// author : Kristaps Karlsons : https://github.com/skakri
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var units = {
+	        'mm': 'minūti_minūtes_minūte_minūtes',
+	        'hh': 'stundu_stundas_stunda_stundas',
+	        'dd': 'dienu_dienas_diena_dienas',
+	        'MM': 'mēnesi_mēnešus_mēnesis_mēneši',
+	        'yy': 'gadu_gadus_gads_gadi'
+	    };
+
+	    function format(word, number, withoutSuffix) {
+	        var forms = word.split('_');
+	        if (withoutSuffix) {
+	            return number % 10 === 1 && number !== 11 ? forms[2] : forms[3];
+	        } else {
+	            return number % 10 === 1 && number !== 11 ? forms[0] : forms[1];
+	        }
+	    }
+
+	    function relativeTimeWithPlural(number, withoutSuffix, key) {
+	        return number + ' ' + format(units[key], number, withoutSuffix);
+	    }
+
+	    return moment.lang('lv', {
+	        months : "janvāris_februāris_marts_aprīlis_maijs_jūnijs_jūlijs_augusts_septembris_oktobris_novembris_decembris".split("_"),
+	        monthsShort : "jan_feb_mar_apr_mai_jūn_jūl_aug_sep_okt_nov_dec".split("_"),
+	        weekdays : "svētdiena_pirmdiena_otrdiena_trešdiena_ceturtdiena_piektdiena_sestdiena".split("_"),
+	        weekdaysShort : "Sv_P_O_T_C_Pk_S".split("_"),
+	        weekdaysMin : "Sv_P_O_T_C_Pk_S".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "YYYY. [gada] D. MMMM",
+	            LLL : "YYYY. [gada] D. MMMM, LT",
+	            LLLL : "YYYY. [gada] D. MMMM, dddd, LT"
+	        },
+	        calendar : {
+	            sameDay : '[Šodien pulksten] LT',
+	            nextDay : '[Rīt pulksten] LT',
+	            nextWeek : 'dddd [pulksten] LT',
+	            lastDay : '[Vakar pulksten] LT',
+	            lastWeek : '[Pagājušā] dddd [pulksten] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s vēlāk",
+	            past : "%s agrāk",
+	            s : "dažas sekundes",
+	            m : "minūti",
+	            mm : relativeTimeWithPlural,
+	            h : "stundu",
+	            hh : relativeTimeWithPlural,
+	            d : "dienu",
+	            dd : relativeTimeWithPlural,
+	            M : "mēnesi",
+	            MM : relativeTimeWithPlural,
+	            y : "gadu",
+	            yy : relativeTimeWithPlural
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 236 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : macedonian (mk)
+	// author : Borislav Mickov : https://github.com/B0k0
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('mk', {
+	        months : "јануари_февруари_март_април_мај_јуни_јули_август_септември_октомври_ноември_декември".split("_"),
+	        monthsShort : "јан_фев_мар_апр_мај_јун_јул_авг_сеп_окт_ное_дек".split("_"),
+	        weekdays : "недела_понеделник_вторник_среда_четврток_петок_сабота".split("_"),
+	        weekdaysShort : "нед_пон_вто_сре_чет_пет_саб".split("_"),
+	        weekdaysMin : "нe_пo_вт_ср_че_пе_сa".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "D.MM.YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Денес во] LT',
+	            nextDay : '[Утре во] LT',
+	            nextWeek : 'dddd [во] LT',
+	            lastDay : '[Вчера во] LT',
+	            lastWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                case 3:
+	                case 6:
+	                    return '[Во изминатата] dddd [во] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[Во изминатиот] dddd [во] LT';
+	                }
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "после %s",
+	            past : "пред %s",
+	            s : "неколку секунди",
+	            m : "минута",
+	            mm : "%d минути",
+	            h : "час",
+	            hh : "%d часа",
+	            d : "ден",
+	            dd : "%d дена",
+	            M : "месец",
+	            MM : "%d месеци",
+	            y : "година",
+	            yy : "%d години"
+	        },
+	        ordinal : function (number) {
+	            var lastDigit = number % 10,
+	                last2Digits = number % 100;
+	            if (number === 0) {
+	                return number + '-ев';
+	            } else if (last2Digits === 0) {
+	                return number + '-ен';
+	            } else if (last2Digits > 10 && last2Digits < 20) {
+	                return number + '-ти';
+	            } else if (lastDigit === 1) {
+	                return number + '-ви';
+	            } else if (lastDigit === 2) {
+	                return number + '-ри';
+	            } else if (lastDigit === 7 || lastDigit === 8) {
+	                return number + '-ми';
+	            } else {
+	                return number + '-ти';
+	            }
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 237 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : malayalam (ml)
+	// author : Floyd Pink : https://github.com/floydpink
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ml', {
+	        months : 'ജനുവരി_ഫെബ്രുവരി_മാർച്ച്_ഏപ്രിൽ_മേയ്_ജൂൺ_ജൂലൈ_ഓഗസ്റ്റ്_സെപ്റ്റംബർ_ഒക്ടോബർ_നവംബർ_ഡിസംബർ'.split("_"),
+	        monthsShort : 'ജനു._ഫെബ്രു._മാർ._ഏപ്രി._മേയ്_ജൂൺ_ജൂലൈ._ഓഗ._സെപ്റ്റ._ഒക്ടോ._നവം._ഡിസം.'.split("_"),
+	        weekdays : 'ഞായറാഴ്ച_തിങ്കളാഴ്ച_ചൊവ്വാഴ്ച_ബുധനാഴ്ച_വ്യാഴാഴ്ച_വെള്ളിയാഴ്ച_ശനിയാഴ്ച'.split("_"),
+	        weekdaysShort : 'ഞായർ_തിങ്കൾ_ചൊവ്വ_ബുധൻ_വ്യാഴം_വെള്ളി_ശനി'.split("_"),
+	        weekdaysMin : 'ഞാ_തി_ചൊ_ബു_വ്യാ_വെ_ശ'.split("_"),
+	        longDateFormat : {
+	            LT : "A h:mm -നു",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY, LT",
+	            LLLL : "dddd, D MMMM YYYY, LT"
+	        },
+	        calendar : {
+	            sameDay : '[ഇന്ന്] LT',
+	            nextDay : '[നാളെ] LT',
+	            nextWeek : 'dddd, LT',
+	            lastDay : '[ഇന്നലെ] LT',
+	            lastWeek : '[കഴിഞ്ഞ] dddd, LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s കഴിഞ്ഞ്",
+	            past : "%s മുൻപ്",
+	            s : "അൽപ നിമിഷങ്ങൾ",
+	            m : "ഒരു മിനിറ്റ്",
+	            mm : "%d മിനിറ്റ്",
+	            h : "ഒരു മണിക്കൂർ",
+	            hh : "%d മണിക്കൂർ",
+	            d : "ഒരു ദിവസം",
+	            dd : "%d ദിവസം",
+	            M : "ഒരു മാസം",
+	            MM : "%d മാസം",
+	            y : "ഒരു വർഷം",
+	            yy : "%d വർഷം"
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 4) {
+	                return "രാത്രി";
+	            } else if (hour < 12) {
+	                return "രാവിലെ";
+	            } else if (hour < 17) {
+	                return "ഉച്ച കഴിഞ്ഞ്";
+	            } else if (hour < 20) {
+	                return "വൈകുന്നേരം";
+	            } else {
+	                return "രാത്രി";
+	            }
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 238 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Marathi (mr)
+	// author : Harshad Kale : https://github.com/kalehv
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var symbolMap = {
+	        '1': '१',
+	        '2': '२',
+	        '3': '३',
+	        '4': '४',
+	        '5': '५',
+	        '6': '६',
+	        '7': '७',
+	        '8': '८',
+	        '9': '९',
+	        '0': '०'
+	    },
+	    numberMap = {
+	        '१': '1',
+	        '२': '2',
+	        '३': '3',
+	        '४': '4',
+	        '५': '5',
+	        '६': '6',
+	        '७': '7',
+	        '८': '8',
+	        '९': '9',
+	        '०': '0'
+	    };
+
+	    return moment.lang('mr', {
+	        months : 'जानेवारी_फेब्रुवारी_मार्च_एप्रिल_मे_जून_जुलै_ऑगस्ट_सप्टेंबर_ऑक्टोबर_नोव्हेंबर_डिसेंबर'.split("_"),
+	        monthsShort: 'जाने._फेब्रु._मार्च._एप्रि._मे._जून._जुलै._ऑग._सप्टें._ऑक्टो._नोव्हें._डिसें.'.split("_"),
+	        weekdays : 'रविवार_सोमवार_मंगळवार_बुधवार_गुरूवार_शुक्रवार_शनिवार'.split("_"),
+	        weekdaysShort : 'रवि_सोम_मंगळ_बुध_गुरू_शुक्र_शनि'.split("_"),
+	        weekdaysMin : 'र_सो_मं_बु_गु_शु_श'.split("_"),
+	        longDateFormat : {
+	            LT : "A h:mm वाजता",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY, LT",
+	            LLLL : "dddd, D MMMM YYYY, LT"
+	        },
+	        calendar : {
+	            sameDay : '[आज] LT',
+	            nextDay : '[उद्या] LT',
+	            nextWeek : 'dddd, LT',
+	            lastDay : '[काल] LT',
+	            lastWeek: '[मागील] dddd, LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s नंतर",
+	            past : "%s पूर्वी",
+	            s : "सेकंद",
+	            m: "एक मिनिट",
+	            mm: "%d मिनिटे",
+	            h : "एक तास",
+	            hh : "%d तास",
+	            d : "एक दिवस",
+	            dd : "%d दिवस",
+	            M : "एक महिना",
+	            MM : "%d महिने",
+	            y : "एक वर्ष",
+	            yy : "%d वर्षे"
+	        },
+	        preparse: function (string) {
+	            return string.replace(/[१२३४५६७८९०]/g, function (match) {
+	                return numberMap[match];
+	            });
+	        },
+	        postformat: function (string) {
+	            return string.replace(/\d/g, function (match) {
+	                return symbolMap[match];
+	            });
+	        },
+	        meridiem: function (hour, minute, isLower)
+	        {
+	            if (hour < 4) {
+	                return "रात्री";
+	            } else if (hour < 10) {
+	                return "सकाळी";
+	            } else if (hour < 17) {
+	                return "दुपारी";
+	            } else if (hour < 20) {
+	                return "सायंकाळी";
+	            } else {
+	                return "रात्री";
+	            }
+	        },
+	        week : {
+	            dow : 0, // Sunday is the first day of the week.
+	            doy : 6  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 239 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Bahasa Malaysia (ms-MY)
+	// author : Weldan Jamili : https://github.com/weldan
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('ms-my', {
+	        months : "Januari_Februari_Mac_April_Mei_Jun_Julai_Ogos_September_Oktober_November_Disember".split("_"),
+	        monthsShort : "Jan_Feb_Mac_Apr_Mei_Jun_Jul_Ogs_Sep_Okt_Nov_Dis".split("_"),
+	        weekdays : "Ahad_Isnin_Selasa_Rabu_Khamis_Jumaat_Sabtu".split("_"),
+	        weekdaysShort : "Ahd_Isn_Sel_Rab_Kha_Jum_Sab".split("_"),
+	        weekdaysMin : "Ah_Is_Sl_Rb_Km_Jm_Sb".split("_"),
+	        longDateFormat : {
+	            LT : "HH.mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY [pukul] LT",
+	            LLLL : "dddd, D MMMM YYYY [pukul] LT"
+	        },
+	        meridiem : function (hours, minutes, isLower) {
+	            if (hours < 11) {
+	                return 'pagi';
+	            } else if (hours < 15) {
+	                return 'tengahari';
+	            } else if (hours < 19) {
+	                return 'petang';
+	            } else {
+	                return 'malam';
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[Hari ini pukul] LT',
+	            nextDay : '[Esok pukul] LT',
+	            nextWeek : 'dddd [pukul] LT',
+	            lastDay : '[Kelmarin pukul] LT',
+	            lastWeek : 'dddd [lepas pukul] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "dalam %s",
+	            past : "%s yang lepas",
+	            s : "beberapa saat",
+	            m : "seminit",
+	            mm : "%d minit",
+	            h : "sejam",
+	            hh : "%d jam",
+	            d : "sehari",
+	            dd : "%d hari",
+	            M : "sebulan",
+	            MM : "%d bulan",
+	            y : "setahun",
+	            yy : "%d tahun"
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 240 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : norwegian bokmål (nb)
+	// authors : Espen Hovlandsdal : https://github.com/rexxars
+	//           Sigurd Gartmann : https://github.com/sigurdga
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('nb', {
+	        months : "januar_februar_mars_april_mai_juni_juli_august_september_oktober_november_desember".split("_"),
+	        monthsShort : "jan._feb._mars_april_mai_juni_juli_aug._sep._okt._nov._des.".split("_"),
+	        weekdays : "søndag_mandag_tirsdag_onsdag_torsdag_fredag_lørdag".split("_"),
+	        weekdaysShort : "sø._ma._ti._on._to._fr._lø.".split("_"),
+	        weekdaysMin : "sø_ma_ti_on_to_fr_lø".split("_"),
+	        longDateFormat : {
+	            LT : "H.mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY [kl.] LT",
+	            LLLL : "dddd D. MMMM YYYY [kl.] LT"
+	        },
+	        calendar : {
+	            sameDay: '[i dag kl.] LT',
+	            nextDay: '[i morgen kl.] LT',
+	            nextWeek: 'dddd [kl.] LT',
+	            lastDay: '[i går kl.] LT',
+	            lastWeek: '[forrige] dddd [kl.] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "om %s",
+	            past : "for %s siden",
+	            s : "noen sekunder",
+	            m : "ett minutt",
+	            mm : "%d minutter",
+	            h : "en time",
+	            hh : "%d timer",
+	            d : "en dag",
+	            dd : "%d dager",
+	            M : "en måned",
+	            MM : "%d måneder",
+	            y : "ett år",
+	            yy : "%d år"
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 241 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : nepali/nepalese
+	// author : suvash : https://github.com/suvash
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var symbolMap = {
+	        '1': '१',
+	        '2': '२',
+	        '3': '३',
+	        '4': '४',
+	        '5': '५',
+	        '6': '६',
+	        '7': '७',
+	        '8': '८',
+	        '9': '९',
+	        '0': '०'
+	    },
+	    numberMap = {
+	        '१': '1',
+	        '२': '2',
+	        '३': '3',
+	        '४': '4',
+	        '५': '5',
+	        '६': '6',
+	        '७': '7',
+	        '८': '8',
+	        '९': '9',
+	        '०': '0'
+	    };
+
+	    return moment.lang('ne', {
+	        months : 'जनवरी_फेब्रुवरी_मार्च_अप्रिल_मई_जुन_जुलाई_अगष्ट_सेप्टेम्बर_अक्टोबर_नोभेम्बर_डिसेम्बर'.split("_"),
+	        monthsShort : 'जन._फेब्रु._मार्च_अप्रि._मई_जुन_जुलाई._अग._सेप्ट._अक्टो._नोभे._डिसे.'.split("_"),
+	        weekdays : 'आइतबार_सोमबार_मङ्गलबार_बुधबार_बिहिबार_शुक्रबार_शनिबार'.split("_"),
+	        weekdaysShort : 'आइत._सोम._मङ्गल._बुध._बिहि._शुक्र._शनि.'.split("_"),
+	        weekdaysMin : 'आइ._सो._मङ्_बु._बि._शु._श.'.split("_"),
+	        longDateFormat : {
+	            LT : "Aको h:mm बजे",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY, LT",
+	            LLLL : "dddd, D MMMM YYYY, LT"
+	        },
+	        preparse: function (string) {
+	            return string.replace(/[१२३४५६७८९०]/g, function (match) {
+	                return numberMap[match];
+	            });
+	        },
+	        postformat: function (string) {
+	            return string.replace(/\d/g, function (match) {
+	                return symbolMap[match];
+	            });
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 3) {
+	                return "राती";
+	            } else if (hour < 10) {
+	                return "बिहान";
+	            } else if (hour < 15) {
+	                return "दिउँसो";
+	            } else if (hour < 18) {
+	                return "बेलुका";
+	            } else if (hour < 20) {
+	                return "साँझ";
+	            } else {
+	                return "राती";
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[आज] LT',
+	            nextDay : '[भोली] LT',
+	            nextWeek : '[आउँदो] dddd[,] LT',
+	            lastDay : '[हिजो] LT',
+	            lastWeek : '[गएको] dddd[,] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%sमा",
+	            past : "%s अगाडी",
+	            s : "केही समय",
+	            m : "एक मिनेट",
+	            mm : "%d मिनेट",
+	            h : "एक घण्टा",
+	            hh : "%d घण्टा",
+	            d : "एक दिन",
+	            dd : "%d दिन",
+	            M : "एक महिना",
+	            MM : "%d महिना",
+	            y : "एक बर्ष",
+	            yy : "%d बर्ष"
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 242 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : dutch (nl)
+	// author : Joris Röling : https://github.com/jjupiter
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var monthsShortWithDots = "jan._feb._mrt._apr._mei_jun._jul._aug._sep._okt._nov._dec.".split("_"),
+	        monthsShortWithoutDots = "jan_feb_mrt_apr_mei_jun_jul_aug_sep_okt_nov_dec".split("_");
+
+	    return moment.lang('nl', {
+	        months : "januari_februari_maart_april_mei_juni_juli_augustus_september_oktober_november_december".split("_"),
+	        monthsShort : function (m, format) {
+	            if (/-MMM-/.test(format)) {
+	                return monthsShortWithoutDots[m.month()];
+	            } else {
+	                return monthsShortWithDots[m.month()];
+	            }
+	        },
+	        weekdays : "zondag_maandag_dinsdag_woensdag_donderdag_vrijdag_zaterdag".split("_"),
+	        weekdaysShort : "zo._ma._di._wo._do._vr._za.".split("_"),
+	        weekdaysMin : "Zo_Ma_Di_Wo_Do_Vr_Za".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD-MM-YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: '[vandaag om] LT',
+	            nextDay: '[morgen om] LT',
+	            nextWeek: 'dddd [om] LT',
+	            lastDay: '[gisteren om] LT',
+	            lastWeek: '[afgelopen] dddd [om] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "over %s",
+	            past : "%s geleden",
+	            s : "een paar seconden",
+	            m : "één minuut",
+	            mm : "%d minuten",
+	            h : "één uur",
+	            hh : "%d uur",
+	            d : "één dag",
+	            dd : "%d dagen",
+	            M : "één maand",
+	            MM : "%d maanden",
+	            y : "één jaar",
+	            yy : "%d jaar"
+	        },
+	        ordinal : function (number) {
+	            return number + ((number === 1 || number === 8 || number >= 20) ? 'ste' : 'de');
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 243 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : norwegian nynorsk (nn)
+	// author : https://github.com/mechuwind
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('nn', {
+	        months : "januar_februar_mars_april_mai_juni_juli_august_september_oktober_november_desember".split("_"),
+	        monthsShort : "jan_feb_mar_apr_mai_jun_jul_aug_sep_okt_nov_des".split("_"),
+	        weekdays : "sundag_måndag_tysdag_onsdag_torsdag_fredag_laurdag".split("_"),
+	        weekdaysShort : "sun_mån_tys_ons_tor_fre_lau".split("_"),
+	        weekdaysMin : "su_må_ty_on_to_fr_lø".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: '[I dag klokka] LT',
+	            nextDay: '[I morgon klokka] LT',
+	            nextWeek: 'dddd [klokka] LT',
+	            lastDay: '[I går klokka] LT',
+	            lastWeek: '[Føregåande] dddd [klokka] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "om %s",
+	            past : "for %s sidan",
+	            s : "nokre sekund",
+	            m : "eit minutt",
+	            mm : "%d minutt",
+	            h : "ein time",
+	            hh : "%d timar",
+	            d : "ein dag",
+	            dd : "%d dagar",
+	            M : "ein månad",
+	            MM : "%d månader",
+	            y : "eit år",
+	            yy : "%d år"
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 244 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : polish (pl)
+	// author : Rafal Hirsz : https://github.com/evoL
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var monthsNominative = "styczeń_luty_marzec_kwiecień_maj_czerwiec_lipiec_sierpień_wrzesień_październik_listopad_grudzień".split("_"),
+	        monthsSubjective = "stycznia_lutego_marca_kwietnia_maja_czerwca_lipca_sierpnia_września_października_listopada_grudnia".split("_");
+
+	    function plural(n) {
+	        return (n % 10 < 5) && (n % 10 > 1) && ((~~(n / 10) % 10) !== 1);
+	    }
+
+	    function translate(number, withoutSuffix, key) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 'm':
+	            return withoutSuffix ? 'minuta' : 'minutę';
+	        case 'mm':
+	            return result + (plural(number) ? 'minuty' : 'minut');
+	        case 'h':
+	            return withoutSuffix  ? 'godzina'  : 'godzinę';
+	        case 'hh':
+	            return result + (plural(number) ? 'godziny' : 'godzin');
+	        case 'MM':
+	            return result + (plural(number) ? 'miesiące' : 'miesięcy');
+	        case 'yy':
+	            return result + (plural(number) ? 'lata' : 'lat');
+	        }
+	    }
+
+	    return moment.lang('pl', {
+	        months : function (momentToFormat, format) {
+	            if (/D MMMM/.test(format)) {
+	                return monthsSubjective[momentToFormat.month()];
+	            } else {
+	                return monthsNominative[momentToFormat.month()];
+	            }
+	        },
+	        monthsShort : "sty_lut_mar_kwi_maj_cze_lip_sie_wrz_paź_lis_gru".split("_"),
+	        weekdays : "niedziela_poniedziałek_wtorek_środa_czwartek_piątek_sobota".split("_"),
+	        weekdaysShort : "nie_pon_wt_śr_czw_pt_sb".split("_"),
+	        weekdaysMin : "N_Pn_Wt_Śr_Cz_Pt_So".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: '[Dziś o] LT',
+	            nextDay: '[Jutro o] LT',
+	            nextWeek: '[W] dddd [o] LT',
+	            lastDay: '[Wczoraj o] LT',
+	            lastWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[W zeszłą niedzielę o] LT';
+	                case 3:
+	                    return '[W zeszłą środę o] LT';
+	                case 6:
+	                    return '[W zeszłą sobotę o] LT';
+	                default:
+	                    return '[W zeszły] dddd [o] LT';
+	                }
+	            },
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "za %s",
+	            past : "%s temu",
+	            s : "kilka sekund",
+	            m : translate,
+	            mm : translate,
+	            h : translate,
+	            hh : translate,
+	            d : "1 dzień",
+	            dd : '%d dni',
+	            M : "miesiąc",
+	            MM : translate,
+	            y : "rok",
+	            yy : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 245 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : brazilian portuguese (pt-br)
+	// author : Caio Ribeiro Pereira : https://github.com/caio-ribeiro-pereira
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('pt-br', {
+	        months : "janeiro_fevereiro_março_abril_maio_junho_julho_agosto_setembro_outubro_novembro_dezembro".split("_"),
+	        monthsShort : "jan_fev_mar_abr_mai_jun_jul_ago_set_out_nov_dez".split("_"),
+	        weekdays : "domingo_segunda-feira_terça-feira_quarta-feira_quinta-feira_sexta-feira_sábado".split("_"),
+	        weekdaysShort : "dom_seg_ter_qua_qui_sex_sáb".split("_"),
+	        weekdaysMin : "dom_2ª_3ª_4ª_5ª_6ª_sáb".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D [de] MMMM [de] YYYY",
+	            LLL : "D [de] MMMM [de] YYYY [às] LT",
+	            LLLL : "dddd, D [de] MMMM [de] YYYY [às] LT"
+	        },
+	        calendar : {
+	            sameDay: '[Hoje às] LT',
+	            nextDay: '[Amanhã às] LT',
+	            nextWeek: 'dddd [às] LT',
+	            lastDay: '[Ontem às] LT',
+	            lastWeek: function () {
+	                return (this.day() === 0 || this.day() === 6) ?
+	                    '[Último] dddd [às] LT' : // Saturday + Sunday
+	                    '[Última] dddd [às] LT'; // Monday - Friday
+	            },
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "em %s",
+	            past : "%s atrás",
+	            s : "segundos",
+	            m : "um minuto",
+	            mm : "%d minutos",
+	            h : "uma hora",
+	            hh : "%d horas",
+	            d : "um dia",
+	            dd : "%d dias",
+	            M : "um mês",
+	            MM : "%d meses",
+	            y : "um ano",
+	            yy : "%d anos"
+	        },
+	        ordinal : '%dº'
+	    });
+	}));
+
+
+/***/ },
+/* 246 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : portuguese (pt)
+	// author : Jefferson : https://github.com/jalex79
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('pt', {
+	        months : "janeiro_fevereiro_março_abril_maio_junho_julho_agosto_setembro_outubro_novembro_dezembro".split("_"),
+	        monthsShort : "jan_fev_mar_abr_mai_jun_jul_ago_set_out_nov_dez".split("_"),
+	        weekdays : "domingo_segunda-feira_terça-feira_quarta-feira_quinta-feira_sexta-feira_sábado".split("_"),
+	        weekdaysShort : "dom_seg_ter_qua_qui_sex_sáb".split("_"),
+	        weekdaysMin : "dom_2ª_3ª_4ª_5ª_6ª_sáb".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D [de] MMMM [de] YYYY",
+	            LLL : "D [de] MMMM [de] YYYY LT",
+	            LLLL : "dddd, D [de] MMMM [de] YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: '[Hoje às] LT',
+	            nextDay: '[Amanhã às] LT',
+	            nextWeek: 'dddd [às] LT',
+	            lastDay: '[Ontem às] LT',
+	            lastWeek: function () {
+	                return (this.day() === 0 || this.day() === 6) ?
+	                    '[Último] dddd [às] LT' : // Saturday + Sunday
+	                    '[Última] dddd [às] LT'; // Monday - Friday
+	            },
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "em %s",
+	            past : "%s atrás",
+	            s : "segundos",
+	            m : "um minuto",
+	            mm : "%d minutos",
+	            h : "uma hora",
+	            hh : "%d horas",
+	            d : "um dia",
+	            dd : "%d dias",
+	            M : "um mês",
+	            MM : "%d meses",
+	            y : "um ano",
+	            yy : "%d anos"
+	        },
+	        ordinal : '%dº',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 247 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : romanian (ro)
+	// author : Vlad Gurdiga : https://github.com/gurdiga
+	// author : Valentin Agachi : https://github.com/avaly
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function relativeTimeWithPlural(number, withoutSuffix, key) {
+	        var format = {
+	            'mm': 'minute',
+	            'hh': 'ore',
+	            'dd': 'zile',
+	            'MM': 'luni',
+	            'yy': 'ani'
+	        },
+	            separator = ' ';
+	        if (number % 100 >= 20 || (number >= 100 && number % 100 === 0)) {
+	            separator = ' de ';
+	        }
+
+	        return number + separator + format[key];
+	    }
+
+	    return moment.lang('ro', {
+	        months : "ianuarie_februarie_martie_aprilie_mai_iunie_iulie_august_septembrie_octombrie_noiembrie_decembrie".split("_"),
+	        monthsShort : "ian._febr._mart._apr._mai_iun._iul._aug._sept._oct._nov._dec.".split("_"),
+	        weekdays : "duminică_luni_marți_miercuri_joi_vineri_sâmbătă".split("_"),
+	        weekdaysShort : "Dum_Lun_Mar_Mie_Joi_Vin_Sâm".split("_"),
+	        weekdaysMin : "Du_Lu_Ma_Mi_Jo_Vi_Sâ".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY H:mm",
+	            LLLL : "dddd, D MMMM YYYY H:mm"
+	        },
+	        calendar : {
+	            sameDay: "[azi la] LT",
+	            nextDay: '[mâine la] LT',
+	            nextWeek: 'dddd [la] LT',
+	            lastDay: '[ieri la] LT',
+	            lastWeek: '[fosta] dddd [la] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "peste %s",
+	            past : "%s în urmă",
+	            s : "câteva secunde",
+	            m : "un minut",
+	            mm : relativeTimeWithPlural,
+	            h : "o oră",
+	            hh : relativeTimeWithPlural,
+	            d : "o zi",
+	            dd : relativeTimeWithPlural,
+	            M : "o lună",
+	            MM : relativeTimeWithPlural,
+	            y : "un an",
+	            yy : relativeTimeWithPlural
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 248 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : russian (ru)
+	// author : Viktorminator : https://github.com/Viktorminator
+	// Author : Menelion Elensúle : https://github.com/Oire
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function plural(word, num) {
+	        var forms = word.split('_');
+	        return num % 10 === 1 && num % 100 !== 11 ? forms[0] : (num % 10 >= 2 && num % 10 <= 4 && (num % 100 < 10 || num % 100 >= 20) ? forms[1] : forms[2]);
+	    }
+
+	    function relativeTimeWithPlural(number, withoutSuffix, key) {
+	        var format = {
+	            'mm': withoutSuffix ? 'минута_минуты_минут' : 'минуту_минуты_минут',
+	            'hh': 'час_часа_часов',
+	            'dd': 'день_дня_дней',
+	            'MM': 'месяц_месяца_месяцев',
+	            'yy': 'год_года_лет'
+	        };
+	        if (key === 'm') {
+	            return withoutSuffix ? 'минута' : 'минуту';
+	        }
+	        else {
+	            return number + ' ' + plural(format[key], +number);
+	        }
+	    }
+
+	    function monthsCaseReplace(m, format) {
+	        var months = {
+	            'nominative': 'январь_февраль_март_апрель_май_июнь_июль_август_сентябрь_октябрь_ноябрь_декабрь'.split('_'),
+	            'accusative': 'января_февраля_марта_апреля_мая_июня_июля_августа_сентября_октября_ноября_декабря'.split('_')
+	        },
+
+	        nounCase = (/D[oD]?(\[[^\[\]]*\]|\s+)+MMMM?/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return months[nounCase][m.month()];
+	    }
+
+	    function monthsShortCaseReplace(m, format) {
+	        var monthsShort = {
+	            'nominative': 'янв_фев_мар_апр_май_июнь_июль_авг_сен_окт_ноя_дек'.split('_'),
+	            'accusative': 'янв_фев_мар_апр_мая_июня_июля_авг_сен_окт_ноя_дек'.split('_')
+	        },
+
+	        nounCase = (/D[oD]?(\[[^\[\]]*\]|\s+)+MMMM?/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return monthsShort[nounCase][m.month()];
+	    }
+
+	    function weekdaysCaseReplace(m, format) {
+	        var weekdays = {
+	            'nominative': 'воскресенье_понедельник_вторник_среда_четверг_пятница_суббота'.split('_'),
+	            'accusative': 'воскресенье_понедельник_вторник_среду_четверг_пятницу_субботу'.split('_')
+	        },
+
+	        nounCase = (/\[ ?[Вв] ?(?:прошлую|следующую)? ?\] ?dddd/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return weekdays[nounCase][m.day()];
+	    }
+
+	    return moment.lang('ru', {
+	        months : monthsCaseReplace,
+	        monthsShort : monthsShortCaseReplace,
+	        weekdays : weekdaysCaseReplace,
+	        weekdaysShort : "вс_пн_вт_ср_чт_пт_сб".split("_"),
+	        weekdaysMin : "вс_пн_вт_ср_чт_пт_сб".split("_"),
+	        monthsParse : [/^янв/i, /^фев/i, /^мар/i, /^апр/i, /^ма[й|я]/i, /^июн/i, /^июл/i, /^авг/i, /^сен/i, /^окт/i, /^ноя/i, /^дек/i],
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY г.",
+	            LLL : "D MMMM YYYY г., LT",
+	            LLLL : "dddd, D MMMM YYYY г., LT"
+	        },
+	        calendar : {
+	            sameDay: '[Сегодня в] LT',
+	            nextDay: '[Завтра в] LT',
+	            lastDay: '[Вчера в] LT',
+	            nextWeek: function () {
+	                return this.day() === 2 ? '[Во] dddd [в] LT' : '[В] dddd [в] LT';
+	            },
+	            lastWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[В прошлое] dddd [в] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                    return '[В прошлый] dddd [в] LT';
+	                case 3:
+	                case 5:
+	                case 6:
+	                    return '[В прошлую] dddd [в] LT';
+	                }
+	            },
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "через %s",
+	            past : "%s назад",
+	            s : "несколько секунд",
+	            m : relativeTimeWithPlural,
+	            mm : relativeTimeWithPlural,
+	            h : "час",
+	            hh : relativeTimeWithPlural,
+	            d : "день",
+	            dd : relativeTimeWithPlural,
+	            M : "месяц",
+	            MM : relativeTimeWithPlural,
+	            y : "год",
+	            yy : relativeTimeWithPlural
+	        },
+
+	        // M. E.: those two are virtually unused but a user might want to implement them for his/her website for some reason
+
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 4) {
+	                return "ночи";
+	            } else if (hour < 12) {
+	                return "утра";
+	            } else if (hour < 17) {
+	                return "дня";
+	            } else {
+	                return "вечера";
+	            }
+	        },
+
+	        ordinal: function (number, period) {
+	            switch (period) {
+	            case 'M':
+	            case 'd':
+	            case 'DDD':
+	                return number + '-й';
+	            case 'D':
+	                return number + '-го';
+	            case 'w':
+	            case 'W':
+	                return number + '-я';
+	            default:
+	                return number;
+	            }
+	        },
+
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 249 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : slovak (sk)
+	// author : Martin Minka : https://github.com/k2s
+	// based on work of petrbela : https://github.com/petrbela
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    var months = "január_február_marec_apríl_máj_jún_júl_august_september_október_november_december".split("_"),
+	        monthsShort = "jan_feb_mar_apr_máj_jún_júl_aug_sep_okt_nov_dec".split("_");
+
+	    function plural(n) {
+	        return (n > 1) && (n < 5);
+	    }
+
+	    function translate(number, withoutSuffix, key, isFuture) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 's':  // a few seconds / in a few seconds / a few seconds ago
+	            return (withoutSuffix || isFuture) ? 'pár sekúnd' : 'pár sekundami';
+	        case 'm':  // a minute / in a minute / a minute ago
+	            return withoutSuffix ? 'minúta' : (isFuture ? 'minútu' : 'minútou');
+	        case 'mm': // 9 minutes / in 9 minutes / 9 minutes ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'minúty' : 'minút');
+	            } else {
+	                return result + 'minútami';
+	            }
+	            break;
+	        case 'h':  // an hour / in an hour / an hour ago
+	            return withoutSuffix ? 'hodina' : (isFuture ? 'hodinu' : 'hodinou');
+	        case 'hh': // 9 hours / in 9 hours / 9 hours ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'hodiny' : 'hodín');
+	            } else {
+	                return result + 'hodinami';
+	            }
+	            break;
+	        case 'd':  // a day / in a day / a day ago
+	            return (withoutSuffix || isFuture) ? 'deň' : 'dňom';
+	        case 'dd': // 9 days / in 9 days / 9 days ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'dni' : 'dní');
+	            } else {
+	                return result + 'dňami';
+	            }
+	            break;
+	        case 'M':  // a month / in a month / a month ago
+	            return (withoutSuffix || isFuture) ? 'mesiac' : 'mesiacom';
+	        case 'MM': // 9 months / in 9 months / 9 months ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'mesiace' : 'mesiacov');
+	            } else {
+	                return result + 'mesiacmi';
+	            }
+	            break;
+	        case 'y':  // a year / in a year / a year ago
+	            return (withoutSuffix || isFuture) ? 'rok' : 'rokom';
+	        case 'yy': // 9 years / in 9 years / 9 years ago
+	            if (withoutSuffix || isFuture) {
+	                return result + (plural(number) ? 'roky' : 'rokov');
+	            } else {
+	                return result + 'rokmi';
+	            }
+	            break;
+	        }
+	    }
+
+	    return moment.lang('sk', {
+	        months : months,
+	        monthsShort : monthsShort,
+	        monthsParse : (function (months, monthsShort) {
+	            var i, _monthsParse = [];
+	            for (i = 0; i < 12; i++) {
+	                // use custom parser to solve problem with July (červenec)
+	                _monthsParse[i] = new RegExp('^' + months[i] + '$|^' + monthsShort[i] + '$', 'i');
+	            }
+	            return _monthsParse;
+	        }(months, monthsShort)),
+	        weekdays : "nedeľa_pondelok_utorok_streda_štvrtok_piatok_sobota".split("_"),
+	        weekdaysShort : "ne_po_ut_st_št_pi_so".split("_"),
+	        weekdaysMin : "ne_po_ut_st_št_pi_so".split("_"),
+	        longDateFormat : {
+	            LT: "H:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY LT",
+	            LLLL : "dddd D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[dnes o] LT",
+	            nextDay: '[zajtra o] LT',
+	            nextWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[v nedeľu o] LT';
+	                case 1:
+	                case 2:
+	                    return '[v] dddd [o] LT';
+	                case 3:
+	                    return '[v stredu o] LT';
+	                case 4:
+	                    return '[vo štvrtok o] LT';
+	                case 5:
+	                    return '[v piatok o] LT';
+	                case 6:
+	                    return '[v sobotu o] LT';
+	                }
+	            },
+	            lastDay: '[včera o] LT',
+	            lastWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[minulú nedeľu o] LT';
+	                case 1:
+	                case 2:
+	                    return '[minulý] dddd [o] LT';
+	                case 3:
+	                    return '[minulú stredu o] LT';
+	                case 4:
+	                case 5:
+	                    return '[minulý] dddd [o] LT';
+	                case 6:
+	                    return '[minulú sobotu o] LT';
+	                }
+	            },
+	            sameElse: "L"
+	        },
+	        relativeTime : {
+	            future : "za %s",
+	            past : "pred %s",
+	            s : translate,
+	            m : translate,
+	            mm : translate,
+	            h : translate,
+	            hh : translate,
+	            d : translate,
+	            dd : translate,
+	            M : translate,
+	            MM : translate,
+	            y : translate,
+	            yy : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 250 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : slovenian (sl)
+	// author : Robert Sedovšek : https://github.com/sedovsek
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function translate(number, withoutSuffix, key) {
+	        var result = number + " ";
+	        switch (key) {
+	        case 'm':
+	            return withoutSuffix ? 'ena minuta' : 'eno minuto';
+	        case 'mm':
+	            if (number === 1) {
+	                result += 'minuta';
+	            } else if (number === 2) {
+	                result += 'minuti';
+	            } else if (number === 3 || number === 4) {
+	                result += 'minute';
+	            } else {
+	                result += 'minut';
+	            }
+	            return result;
+	        case 'h':
+	            return withoutSuffix ? 'ena ura' : 'eno uro';
+	        case 'hh':
+	            if (number === 1) {
+	                result += 'ura';
+	            } else if (number === 2) {
+	                result += 'uri';
+	            } else if (number === 3 || number === 4) {
+	                result += 'ure';
+	            } else {
+	                result += 'ur';
+	            }
+	            return result;
+	        case 'dd':
+	            if (number === 1) {
+	                result += 'dan';
+	            } else {
+	                result += 'dni';
+	            }
+	            return result;
+	        case 'MM':
+	            if (number === 1) {
+	                result += 'mesec';
+	            } else if (number === 2) {
+	                result += 'meseca';
+	            } else if (number === 3 || number === 4) {
+	                result += 'mesece';
+	            } else {
+	                result += 'mesecev';
+	            }
+	            return result;
+	        case 'yy':
+	            if (number === 1) {
+	                result += 'leto';
+	            } else if (number === 2) {
+	                result += 'leti';
+	            } else if (number === 3 || number === 4) {
+	                result += 'leta';
+	            } else {
+	                result += 'let';
+	            }
+	            return result;
+	        }
+	    }
+
+	    return moment.lang('sl', {
+	        months : "januar_februar_marec_april_maj_junij_julij_avgust_september_oktober_november_december".split("_"),
+	        monthsShort : "jan._feb._mar._apr._maj._jun._jul._avg._sep._okt._nov._dec.".split("_"),
+	        weekdays : "nedelja_ponedeljek_torek_sreda_četrtek_petek_sobota".split("_"),
+	        weekdaysShort : "ned._pon._tor._sre._čet._pet._sob.".split("_"),
+	        weekdaysMin : "ne_po_to_sr_če_pe_so".split("_"),
+	        longDateFormat : {
+	            LT : "H:mm",
+	            L : "DD. MM. YYYY",
+	            LL : "D. MMMM YYYY",
+	            LLL : "D. MMMM YYYY LT",
+	            LLLL : "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay  : '[danes ob] LT',
+	            nextDay  : '[jutri ob] LT',
+
+	            nextWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[v] [nedeljo] [ob] LT';
+	                case 3:
+	                    return '[v] [sredo] [ob] LT';
+	                case 6:
+	                    return '[v] [soboto] [ob] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[v] dddd [ob] LT';
+	                }
+	            },
+	            lastDay  : '[včeraj ob] LT',
+	            lastWeek : function () {
+	                switch (this.day()) {
+	                case 0:
+	                case 3:
+	                case 6:
+	                    return '[prejšnja] dddd [ob] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[prejšnji] dddd [ob] LT';
+	                }
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "čez %s",
+	            past   : "%s nazaj",
+	            s      : "nekaj sekund",
+	            m      : translate,
+	            mm     : translate,
+	            h      : translate,
+	            hh     : translate,
+	            d      : "en dan",
+	            dd     : translate,
+	            M      : "en mesec",
+	            MM     : translate,
+	            y      : "eno leto",
+	            yy     : translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 251 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Albanian (sq)
+	// author : Flakërim Ismani : https://github.com/flakerimi
+	// author: Menelion Elensúle: https://github.com/Oire (tests)
+	// author : Oerd Cukalla : https://github.com/oerd (fixes)
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('sq', {
+	        months : "Janar_Shkurt_Mars_Prill_Maj_Qershor_Korrik_Gusht_Shtator_Tetor_Nëntor_Dhjetor".split("_"),
+	        monthsShort : "Jan_Shk_Mar_Pri_Maj_Qer_Kor_Gus_Sht_Tet_Nën_Dhj".split("_"),
+	        weekdays : "E Diel_E Hënë_E Martë_E Mërkurë_E Enjte_E Premte_E Shtunë".split("_"),
+	        weekdaysShort : "Die_Hën_Mar_Mër_Enj_Pre_Sht".split("_"),
+	        weekdaysMin : "D_H_Ma_Më_E_P_Sh".split("_"),
+	        meridiem : function (hours, minutes, isLower) {
+	            return hours < 12 ? 'PD' : 'MD';
+	        },
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[Sot në] LT',
+	            nextDay : '[Nesër në] LT',
+	            nextWeek : 'dddd [në] LT',
+	            lastDay : '[Dje në] LT',
+	            lastWeek : 'dddd [e kaluar në] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "në %s",
+	            past : "%s më parë",
+	            s : "disa sekonda",
+	            m : "një minutë",
+	            mm : "%d minuta",
+	            h : "një orë",
+	            hh : "%d orë",
+	            d : "një ditë",
+	            dd : "%d ditë",
+	            M : "një muaj",
+	            MM : "%d muaj",
+	            y : "një vit",
+	            yy : "%d vite"
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 252 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Serbian-cyrillic (sr-cyr)
+	// author : Milan Janačković<milanjanackovic@gmail.com> : https://github.com/milan-j
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    var translator = {
+	        words: { //Different grammatical cases
+	            m: ['један минут', 'једне минуте'],
+	            mm: ['минут', 'минуте', 'минута'],
+	            h: ['један сат', 'једног сата'],
+	            hh: ['сат', 'сата', 'сати'],
+	            dd: ['дан', 'дана', 'дана'],
+	            MM: ['месец', 'месеца', 'месеци'],
+	            yy: ['година', 'године', 'година']
+	        },
+	        correctGrammaticalCase: function (number, wordKey) {
+	            return number === 1 ? wordKey[0] : (number >= 2 && number <= 4 ? wordKey[1] : wordKey[2]);
+	        },
+	        translate: function (number, withoutSuffix, key) {
+	            var wordKey = translator.words[key];
+	            if (key.length === 1) {
+	                return withoutSuffix ? wordKey[0] : wordKey[1];
+	            } else {
+	                return number + ' ' + translator.correctGrammaticalCase(number, wordKey);
+	            }
+	        }
+	    };
+
+	    return moment.lang('sr-cyr', {
+	        months: ['јануар', 'фебруар', 'март', 'април', 'мај', 'јун', 'јул', 'август', 'септембар', 'октобар', 'новембар', 'децембар'],
+	        monthsShort: ['јан.', 'феб.', 'мар.', 'апр.', 'мај', 'јун', 'јул', 'авг.', 'сеп.', 'окт.', 'нов.', 'дец.'],
+	        weekdays: ['недеља', 'понедељак', 'уторак', 'среда', 'четвртак', 'петак', 'субота'],
+	        weekdaysShort: ['нед.', 'пон.', 'уто.', 'сре.', 'чет.', 'пет.', 'суб.'],
+	        weekdaysMin: ['не', 'по', 'ут', 'ср', 'че', 'пе', 'су'],
+	        longDateFormat: {
+	            LT: "H:mm",
+	            L: "DD. MM. YYYY",
+	            LL: "D. MMMM YYYY",
+	            LLL: "D. MMMM YYYY LT",
+	            LLLL: "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar: {
+	            sameDay: '[данас у] LT',
+	            nextDay: '[сутра у] LT',
+
+	            nextWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[у] [недељу] [у] LT';
+	                case 3:
+	                    return '[у] [среду] [у] LT';
+	                case 6:
+	                    return '[у] [суботу] [у] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[у] dddd [у] LT';
+	                }
+	            },
+	            lastDay  : '[јуче у] LT',
+	            lastWeek : function () {
+	                var lastWeekDays = [
+	                    '[прошле] [недеље] [у] LT',
+	                    '[прошлог] [понедељка] [у] LT',
+	                    '[прошлог] [уторка] [у] LT',
+	                    '[прошле] [среде] [у] LT',
+	                    '[прошлог] [четвртка] [у] LT',
+	                    '[прошлог] [петка] [у] LT',
+	                    '[прошле] [суботе] [у] LT'
+	                ];
+	                return lastWeekDays[this.day()];
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "за %s",
+	            past   : "пре %s",
+	            s      : "неколико секунди",
+	            m      : translator.translate,
+	            mm     : translator.translate,
+	            h      : translator.translate,
+	            hh     : translator.translate,
+	            d      : "дан",
+	            dd     : translator.translate,
+	            M      : "месец",
+	            MM     : translator.translate,
+	            y      : "годину",
+	            yy     : translator.translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 253 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Serbian-latin (sr)
+	// author : Milan Janačković<milanjanackovic@gmail.com> : https://github.com/milan-j
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    var translator = {
+	        words: { //Different grammatical cases
+	            m: ['jedan minut', 'jedne minute'],
+	            mm: ['minut', 'minute', 'minuta'],
+	            h: ['jedan sat', 'jednog sata'],
+	            hh: ['sat', 'sata', 'sati'],
+	            dd: ['dan', 'dana', 'dana'],
+	            MM: ['mesec', 'meseca', 'meseci'],
+	            yy: ['godina', 'godine', 'godina']
+	        },
+	        correctGrammaticalCase: function (number, wordKey) {
+	            return number === 1 ? wordKey[0] : (number >= 2 && number <= 4 ? wordKey[1] : wordKey[2]);
+	        },
+	        translate: function (number, withoutSuffix, key) {
+	            var wordKey = translator.words[key];
+	            if (key.length === 1) {
+	                return withoutSuffix ? wordKey[0] : wordKey[1];
+	            } else {
+	                return number + ' ' + translator.correctGrammaticalCase(number, wordKey);
+	            }
+	        }
+	    };
+
+	    return moment.lang('sr', {
+	        months: ['januar', 'februar', 'mart', 'april', 'maj', 'jun', 'jul', 'avgust', 'septembar', 'oktobar', 'novembar', 'decembar'],
+	        monthsShort: ['jan.', 'feb.', 'mar.', 'apr.', 'maj', 'jun', 'jul', 'avg.', 'sep.', 'okt.', 'nov.', 'dec.'],
+	        weekdays: ['nedelja', 'ponedeljak', 'utorak', 'sreda', 'četvrtak', 'petak', 'subota'],
+	        weekdaysShort: ['ned.', 'pon.', 'uto.', 'sre.', 'čet.', 'pet.', 'sub.'],
+	        weekdaysMin: ['ne', 'po', 'ut', 'sr', 'če', 'pe', 'su'],
+	        longDateFormat: {
+	            LT: "H:mm",
+	            L: "DD. MM. YYYY",
+	            LL: "D. MMMM YYYY",
+	            LLL: "D. MMMM YYYY LT",
+	            LLLL: "dddd, D. MMMM YYYY LT"
+	        },
+	        calendar: {
+	            sameDay: '[danas u] LT',
+	            nextDay: '[sutra u] LT',
+
+	            nextWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                    return '[u] [nedelju] [u] LT';
+	                case 3:
+	                    return '[u] [sredu] [u] LT';
+	                case 6:
+	                    return '[u] [subotu] [u] LT';
+	                case 1:
+	                case 2:
+	                case 4:
+	                case 5:
+	                    return '[u] dddd [u] LT';
+	                }
+	            },
+	            lastDay  : '[juče u] LT',
+	            lastWeek : function () {
+	                var lastWeekDays = [
+	                    '[prošle] [nedelje] [u] LT',
+	                    '[prošlog] [ponedeljka] [u] LT',
+	                    '[prošlog] [utorka] [u] LT',
+	                    '[prošle] [srede] [u] LT',
+	                    '[prošlog] [četvrtka] [u] LT',
+	                    '[prošlog] [petka] [u] LT',
+	                    '[prošle] [subote] [u] LT'
+	                ];
+	                return lastWeekDays[this.day()];
+	            },
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "za %s",
+	            past   : "pre %s",
+	            s      : "nekoliko sekundi",
+	            m      : translator.translate,
+	            mm     : translator.translate,
+	            h      : translator.translate,
+	            hh     : translator.translate,
+	            d      : "dan",
+	            dd     : translator.translate,
+	            M      : "mesec",
+	            MM     : translator.translate,
+	            y      : "godinu",
+	            yy     : translator.translate
+	        },
+	        ordinal : '%d.',
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 254 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : swedish (sv)
+	// author : Jens Alm : https://github.com/ulmus
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('sv', {
+	        months : "januari_februari_mars_april_maj_juni_juli_augusti_september_oktober_november_december".split("_"),
+	        monthsShort : "jan_feb_mar_apr_maj_jun_jul_aug_sep_okt_nov_dec".split("_"),
+	        weekdays : "söndag_måndag_tisdag_onsdag_torsdag_fredag_lördag".split("_"),
+	        weekdaysShort : "sön_mån_tis_ons_tor_fre_lör".split("_"),
+	        weekdaysMin : "sö_må_ti_on_to_fr_lö".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "YYYY-MM-DD",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: '[Idag] LT',
+	            nextDay: '[Imorgon] LT',
+	            lastDay: '[Igår] LT',
+	            nextWeek: 'dddd LT',
+	            lastWeek: '[Förra] dddd[en] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "om %s",
+	            past : "för %s sedan",
+	            s : "några sekunder",
+	            m : "en minut",
+	            mm : "%d minuter",
+	            h : "en timme",
+	            hh : "%d timmar",
+	            d : "en dag",
+	            dd : "%d dagar",
+	            M : "en månad",
+	            MM : "%d månader",
+	            y : "ett år",
+	            yy : "%d år"
+	        },
+	        ordinal : function (number) {
+	            var b = number % 10,
+	                output = (~~ (number % 100 / 10) === 1) ? 'e' :
+	                (b === 1) ? 'a' :
+	                (b === 2) ? 'a' :
+	                (b === 3) ? 'e' : 'e';
+	            return number + output;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 255 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : tamil (ta)
+	// author : Arjunkumar Krishnamoorthy : https://github.com/tk120404
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    /*var symbolMap = {
+	            '1': '௧',
+	            '2': '௨',
+	            '3': '௩',
+	            '4': '௪',
+	            '5': '௫',
+	            '6': '௬',
+	            '7': '௭',
+	            '8': '௮',
+	            '9': '௯',
+	            '0': '௦'
+	        },
+	        numberMap = {
+	            '௧': '1',
+	            '௨': '2',
+	            '௩': '3',
+	            '௪': '4',
+	            '௫': '5',
+	            '௬': '6',
+	            '௭': '7',
+	            '௮': '8',
+	            '௯': '9',
+	            '௦': '0'
+	        }; */
+
+	    return moment.lang('ta', {
+	        months : 'ஜனவரி_பிப்ரவரி_மார்ச்_ஏப்ரல்_மே_ஜூன்_ஜூலை_ஆகஸ்ட்_செப்டெம்பர்_அக்டோபர்_நவம்பர்_டிசம்பர்'.split("_"),
+	        monthsShort : 'ஜனவரி_பிப்ரவரி_மார்ச்_ஏப்ரல்_மே_ஜூன்_ஜூலை_ஆகஸ்ட்_செப்டெம்பர்_அக்டோபர்_நவம்பர்_டிசம்பர்'.split("_"),
+	        weekdays : 'ஞாயிற்றுக்கிழமை_திங்கட்கிழமை_செவ்வாய்கிழமை_புதன்கிழமை_வியாழக்கிழமை_வெள்ளிக்கிழமை_சனிக்கிழமை'.split("_"),
+	        weekdaysShort : 'ஞாயிறு_திங்கள்_செவ்வாய்_புதன்_வியாழன்_வெள்ளி_சனி'.split("_"),
+	        weekdaysMin : 'ஞா_தி_செ_பு_வி_வெ_ச'.split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY, LT",
+	            LLLL : "dddd, D MMMM YYYY, LT"
+	        },
+	        calendar : {
+	            sameDay : '[இன்று] LT',
+	            nextDay : '[நாளை] LT',
+	            nextWeek : 'dddd, LT',
+	            lastDay : '[நேற்று] LT',
+	            lastWeek : '[கடந்த வாரம்] dddd, LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s இல்",
+	            past : "%s முன்",
+	            s : "ஒரு சில விநாடிகள்",
+	            m : "ஒரு நிமிடம்",
+	            mm : "%d நிமிடங்கள்",
+	            h : "ஒரு மணி நேரம்",
+	            hh : "%d மணி நேரம்",
+	            d : "ஒரு நாள்",
+	            dd : "%d நாட்கள்",
+	            M : "ஒரு மாதம்",
+	            MM : "%d மாதங்கள்",
+	            y : "ஒரு வருடம்",
+	            yy : "%d ஆண்டுகள்"
+	        },
+	/*        preparse: function (string) {
+	            return string.replace(/[௧௨௩௪௫௬௭௮௯௦]/g, function (match) {
+	                return numberMap[match];
+	            });
+	        },
+	        postformat: function (string) {
+	            return string.replace(/\d/g, function (match) {
+	                return symbolMap[match];
+	            });
+	        },*/
+	        ordinal : function (number) {
+	            return number + 'வது';
+	        },
+
+
+	// refer http://ta.wikipedia.org/s/1er1      
+
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour >= 6 && hour <= 10) {
+	                return " காலை";
+	            } else   if (hour >= 10 && hour <= 14) {
+	                return " நண்பகல்";
+	            } else    if (hour >= 14 && hour <= 18) {
+	                return " எற்பாடு";
+	            } else   if (hour >= 18 && hour <= 20) {
+	                return " மாலை";
+	            } else  if (hour >= 20 && hour <= 24) {
+	                return " இரவு";
+	            } else  if (hour >= 0 && hour <= 6) {
+	                return " வைகறை";
+	            }
+	        },
+	        week : {
+	            dow : 0, // Sunday is the first day of the week.
+	            doy : 6  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 256 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : thai (th)
+	// author : Kridsada Thanabulpong : https://github.com/sirn
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('th', {
+	        months : "มกราคม_กุมภาพันธ์_มีนาคม_เมษายน_พฤษภาคม_มิถุนายน_กรกฎาคม_สิงหาคม_กันยายน_ตุลาคม_พฤศจิกายน_ธันวาคม".split("_"),
+	        monthsShort : "มกรา_กุมภา_มีนา_เมษา_พฤษภา_มิถุนา_กรกฎา_สิงหา_กันยา_ตุลา_พฤศจิกา_ธันวา".split("_"),
+	        weekdays : "อาทิตย์_จันทร์_อังคาร_พุธ_พฤหัสบดี_ศุกร์_เสาร์".split("_"),
+	        weekdaysShort : "อาทิตย์_จันทร์_อังคาร_พุธ_พฤหัส_ศุกร์_เสาร์".split("_"), // yes, three characters difference
+	        weekdaysMin : "อา._จ._อ._พ._พฤ._ศ._ส.".split("_"),
+	        longDateFormat : {
+	            LT : "H นาฬิกา m นาที",
+	            L : "YYYY/MM/DD",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY เวลา LT",
+	            LLLL : "วันddddที่ D MMMM YYYY เวลา LT"
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 12) {
+	                return "ก่อนเที่ยง";
+	            } else {
+	                return "หลังเที่ยง";
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[วันนี้ เวลา] LT',
+	            nextDay : '[พรุ่งนี้ เวลา] LT',
+	            nextWeek : 'dddd[หน้า เวลา] LT',
+	            lastDay : '[เมื่อวานนี้ เวลา] LT',
+	            lastWeek : '[วัน]dddd[ที่แล้ว เวลา] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "อีก %s",
+	            past : "%sที่แล้ว",
+	            s : "ไม่กี่วินาที",
+	            m : "1 นาที",
+	            mm : "%d นาที",
+	            h : "1 ชั่วโมง",
+	            hh : "%d ชั่วโมง",
+	            d : "1 วัน",
+	            dd : "%d วัน",
+	            M : "1 เดือน",
+	            MM : "%d เดือน",
+	            y : "1 ปี",
+	            yy : "%d ปี"
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 257 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Tagalog/Filipino (tl-ph)
+	// author : Dan Hagman
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('tl-ph', {
+	        months : "Enero_Pebrero_Marso_Abril_Mayo_Hunyo_Hulyo_Agosto_Setyembre_Oktubre_Nobyembre_Disyembre".split("_"),
+	        monthsShort : "Ene_Peb_Mar_Abr_May_Hun_Hul_Ago_Set_Okt_Nob_Dis".split("_"),
+	        weekdays : "Linggo_Lunes_Martes_Miyerkules_Huwebes_Biyernes_Sabado".split("_"),
+	        weekdaysShort : "Lin_Lun_Mar_Miy_Huw_Biy_Sab".split("_"),
+	        weekdaysMin : "Li_Lu_Ma_Mi_Hu_Bi_Sab".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "MM/D/YYYY",
+	            LL : "MMMM D, YYYY",
+	            LLL : "MMMM D, YYYY LT",
+	            LLLL : "dddd, MMMM DD, YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[Ngayon sa] LT",
+	            nextDay: '[Bukas sa] LT',
+	            nextWeek: 'dddd [sa] LT',
+	            lastDay: '[Kahapon sa] LT',
+	            lastWeek: 'dddd [huling linggo] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "sa loob ng %s",
+	            past : "%s ang nakalipas",
+	            s : "ilang segundo",
+	            m : "isang minuto",
+	            mm : "%d minuto",
+	            h : "isang oras",
+	            hh : "%d oras",
+	            d : "isang araw",
+	            dd : "%d araw",
+	            M : "isang buwan",
+	            MM : "%d buwan",
+	            y : "isang taon",
+	            yy : "%d taon"
+	        },
+	        ordinal : function (number) {
+	            return number;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 258 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : turkish (tr)
+	// authors : Erhan Gundogan : https://github.com/erhangundogan,
+	//           Burak Yiğit Kaya: https://github.com/BYK
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+
+	    var suffixes = {
+	        1: "'inci",
+	        5: "'inci",
+	        8: "'inci",
+	        70: "'inci",
+	        80: "'inci",
+
+	        2: "'nci",
+	        7: "'nci",
+	        20: "'nci",
+	        50: "'nci",
+
+	        3: "'üncü",
+	        4: "'üncü",
+	        100: "'üncü",
+
+	        6: "'ncı",
+
+	        9: "'uncu",
+	        10: "'uncu",
+	        30: "'uncu",
+
+	        60: "'ıncı",
+	        90: "'ıncı"
+	    };
+
+	    return moment.lang('tr', {
+	        months : "Ocak_Şubat_Mart_Nisan_Mayıs_Haziran_Temmuz_Ağustos_Eylül_Ekim_Kasım_Aralık".split("_"),
+	        monthsShort : "Oca_Şub_Mar_Nis_May_Haz_Tem_Ağu_Eyl_Eki_Kas_Ara".split("_"),
+	        weekdays : "Pazar_Pazartesi_Salı_Çarşamba_Perşembe_Cuma_Cumartesi".split("_"),
+	        weekdaysShort : "Paz_Pts_Sal_Çar_Per_Cum_Cts".split("_"),
+	        weekdaysMin : "Pz_Pt_Sa_Ça_Pe_Cu_Ct".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd, D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay : '[bugün saat] LT',
+	            nextDay : '[yarın saat] LT',
+	            nextWeek : '[haftaya] dddd [saat] LT',
+	            lastDay : '[dün] LT',
+	            lastWeek : '[geçen hafta] dddd [saat] LT',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "%s sonra",
+	            past : "%s önce",
+	            s : "birkaç saniye",
+	            m : "bir dakika",
+	            mm : "%d dakika",
+	            h : "bir saat",
+	            hh : "%d saat",
+	            d : "bir gün",
+	            dd : "%d gün",
+	            M : "bir ay",
+	            MM : "%d ay",
+	            y : "bir yıl",
+	            yy : "%d yıl"
+	        },
+	        ordinal : function (number) {
+	            if (number === 0) {  // special case for zero
+	                return number + "'ıncı";
+	            }
+	            var a = number % 10,
+	                b = number % 100 - a,
+	                c = number >= 100 ? 100 : null;
+
+	            return number + (suffixes[a] || suffixes[b] || suffixes[c]);
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 259 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Morocco Central Atlas Tamaziɣt in Latin (tzm-la)
+	// author : Abdel Said : https://github.com/abdelsaid
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('tzm-la', {
+	        months : "innayr_brˤayrˤ_marˤsˤ_ibrir_mayyw_ywnyw_ywlywz_ɣwšt_šwtanbir_ktˤwbrˤ_nwwanbir_dwjnbir".split("_"),
+	        monthsShort : "innayr_brˤayrˤ_marˤsˤ_ibrir_mayyw_ywnyw_ywlywz_ɣwšt_šwtanbir_ktˤwbrˤ_nwwanbir_dwjnbir".split("_"),
+	        weekdays : "asamas_aynas_asinas_akras_akwas_asimwas_asiḍyas".split("_"),
+	        weekdaysShort : "asamas_aynas_asinas_akras_akwas_asimwas_asiḍyas".split("_"),
+	        weekdaysMin : "asamas_aynas_asinas_akras_akwas_asimwas_asiḍyas".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[asdkh g] LT",
+	            nextDay: '[aska g] LT',
+	            nextWeek: 'dddd [g] LT',
+	            lastDay: '[assant g] LT',
+	            lastWeek: 'dddd [g] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "dadkh s yan %s",
+	            past : "yan %s",
+	            s : "imik",
+	            m : "minuḍ",
+	            mm : "%d minuḍ",
+	            h : "saɛa",
+	            hh : "%d tassaɛin",
+	            d : "ass",
+	            dd : "%d ossan",
+	            M : "ayowr",
+	            MM : "%d iyyirn",
+	            y : "asgas",
+	            yy : "%d isgasn"
+	        },
+	        week : {
+	            dow : 6, // Saturday is the first day of the week.
+	            doy : 12  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 260 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : Morocco Central Atlas Tamaziɣt (tzm)
+	// author : Abdel Said : https://github.com/abdelsaid
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('tzm', {
+	        months : "ⵉⵏⵏⴰⵢⵔ_ⴱⵕⴰⵢⵕ_ⵎⴰⵕⵚ_ⵉⴱⵔⵉⵔ_ⵎⴰⵢⵢⵓ_ⵢⵓⵏⵢⵓ_ⵢⵓⵍⵢⵓⵣ_ⵖⵓⵛⵜ_ⵛⵓⵜⴰⵏⴱⵉⵔ_ⴽⵟⵓⴱⵕ_ⵏⵓⵡⴰⵏⴱⵉⵔ_ⴷⵓⵊⵏⴱⵉⵔ".split("_"),
+	        monthsShort : "ⵉⵏⵏⴰⵢⵔ_ⴱⵕⴰⵢⵕ_ⵎⴰⵕⵚ_ⵉⴱⵔⵉⵔ_ⵎⴰⵢⵢⵓ_ⵢⵓⵏⵢⵓ_ⵢⵓⵍⵢⵓⵣ_ⵖⵓⵛⵜ_ⵛⵓⵜⴰⵏⴱⵉⵔ_ⴽⵟⵓⴱⵕ_ⵏⵓⵡⴰⵏⴱⵉⵔ_ⴷⵓⵊⵏⴱⵉⵔ".split("_"),
+	        weekdays : "ⴰⵙⴰⵎⴰⵙ_ⴰⵢⵏⴰⵙ_ⴰⵙⵉⵏⴰⵙ_ⴰⴽⵔⴰⵙ_ⴰⴽⵡⴰⵙ_ⴰⵙⵉⵎⵡⴰⵙ_ⴰⵙⵉⴹⵢⴰⵙ".split("_"),
+	        weekdaysShort : "ⴰⵙⴰⵎⴰⵙ_ⴰⵢⵏⴰⵙ_ⴰⵙⵉⵏⴰⵙ_ⴰⴽⵔⴰⵙ_ⴰⴽⵡⴰⵙ_ⴰⵙⵉⵎⵡⴰⵙ_ⴰⵙⵉⴹⵢⴰⵙ".split("_"),
+	        weekdaysMin : "ⴰⵙⴰⵎⴰⵙ_ⴰⵢⵏⴰⵙ_ⴰⵙⵉⵏⴰⵙ_ⴰⴽⵔⴰⵙ_ⴰⴽⵡⴰⵙ_ⴰⵙⵉⵎⵡⴰⵙ_ⴰⵙⵉⴹⵢⴰⵙ".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "dddd D MMMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[ⴰⵙⴷⵅ ⴴ] LT",
+	            nextDay: '[ⴰⵙⴽⴰ ⴴ] LT',
+	            nextWeek: 'dddd [ⴴ] LT',
+	            lastDay: '[ⴰⵚⴰⵏⵜ ⴴ] LT',
+	            lastWeek: 'dddd [ⴴ] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "ⴷⴰⴷⵅ ⵙ ⵢⴰⵏ %s",
+	            past : "ⵢⴰⵏ %s",
+	            s : "ⵉⵎⵉⴽ",
+	            m : "ⵎⵉⵏⵓⴺ",
+	            mm : "%d ⵎⵉⵏⵓⴺ",
+	            h : "ⵙⴰⵄⴰ",
+	            hh : "%d ⵜⴰⵙⵙⴰⵄⵉⵏ",
+	            d : "ⴰⵙⵙ",
+	            dd : "%d oⵙⵙⴰⵏ",
+	            M : "ⴰⵢoⵓⵔ",
+	            MM : "%d ⵉⵢⵢⵉⵔⵏ",
+	            y : "ⴰⵙⴳⴰⵙ",
+	            yy : "%d ⵉⵙⴳⴰⵙⵏ"
+	        },
+	        week : {
+	            dow : 6, // Saturday is the first day of the week.
+	            doy : 12  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 261 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : ukrainian (uk)
+	// author : zemlanin : https://github.com/zemlanin
+	// Author : Menelion Elensúle : https://github.com/Oire
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    function plural(word, num) {
+	        var forms = word.split('_');
+	        return num % 10 === 1 && num % 100 !== 11 ? forms[0] : (num % 10 >= 2 && num % 10 <= 4 && (num % 100 < 10 || num % 100 >= 20) ? forms[1] : forms[2]);
+	    }
+
+	    function relativeTimeWithPlural(number, withoutSuffix, key) {
+	        var format = {
+	            'mm': 'хвилина_хвилини_хвилин',
+	            'hh': 'година_години_годин',
+	            'dd': 'день_дні_днів',
+	            'MM': 'місяць_місяці_місяців',
+	            'yy': 'рік_роки_років'
+	        };
+	        if (key === 'm') {
+	            return withoutSuffix ? 'хвилина' : 'хвилину';
+	        }
+	        else if (key === 'h') {
+	            return withoutSuffix ? 'година' : 'годину';
+	        }
+	        else {
+	            return number + ' ' + plural(format[key], +number);
+	        }
+	    }
+
+	    function monthsCaseReplace(m, format) {
+	        var months = {
+	            'nominative': 'січень_лютий_березень_квітень_травень_червень_липень_серпень_вересень_жовтень_листопад_грудень'.split('_'),
+	            'accusative': 'січня_лютого_березня_квітня_травня_червня_липня_серпня_вересня_жовтня_листопада_грудня'.split('_')
+	        },
+
+	        nounCase = (/D[oD]? *MMMM?/).test(format) ?
+	            'accusative' :
+	            'nominative';
+
+	        return months[nounCase][m.month()];
+	    }
+
+	    function weekdaysCaseReplace(m, format) {
+	        var weekdays = {
+	            'nominative': 'неділя_понеділок_вівторок_середа_четвер_п’ятниця_субота'.split('_'),
+	            'accusative': 'неділю_понеділок_вівторок_середу_четвер_п’ятницю_суботу'.split('_'),
+	            'genitive': 'неділі_понеділка_вівторка_середи_четверга_п’ятниці_суботи'.split('_')
+	        },
+
+	        nounCase = (/(\[[ВвУу]\]) ?dddd/).test(format) ?
+	            'accusative' :
+	            ((/\[?(?:минулої|наступної)? ?\] ?dddd/).test(format) ?
+	                'genitive' :
+	                'nominative');
+
+	        return weekdays[nounCase][m.day()];
+	    }
+
+	    function processHoursFunction(str) {
+	        return function () {
+	            return str + 'о' + (this.hours() === 11 ? 'б' : '') + '] LT';
+	        };
+	    }
+
+	    return moment.lang('uk', {
+	        months : monthsCaseReplace,
+	        monthsShort : "січ_лют_бер_квіт_трав_черв_лип_серп_вер_жовт_лист_груд".split("_"),
+	        weekdays : weekdaysCaseReplace,
+	        weekdaysShort : "нд_пн_вт_ср_чт_пт_сб".split("_"),
+	        weekdaysMin : "нд_пн_вт_ср_чт_пт_сб".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD.MM.YYYY",
+	            LL : "D MMMM YYYY р.",
+	            LLL : "D MMMM YYYY р., LT",
+	            LLLL : "dddd, D MMMM YYYY р., LT"
+	        },
+	        calendar : {
+	            sameDay: processHoursFunction('[Сьогодні '),
+	            nextDay: processHoursFunction('[Завтра '),
+	            lastDay: processHoursFunction('[Вчора '),
+	            nextWeek: processHoursFunction('[У] dddd ['),
+	            lastWeek: function () {
+	                switch (this.day()) {
+	                case 0:
+	                case 3:
+	                case 5:
+	                case 6:
+	                    return processHoursFunction('[Минулої] dddd [').call(this);
+	                case 1:
+	                case 2:
+	                case 4:
+	                    return processHoursFunction('[Минулого] dddd [').call(this);
+	                }
+	            },
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "за %s",
+	            past : "%s тому",
+	            s : "декілька секунд",
+	            m : relativeTimeWithPlural,
+	            mm : relativeTimeWithPlural,
+	            h : "годину",
+	            hh : relativeTimeWithPlural,
+	            d : "день",
+	            dd : relativeTimeWithPlural,
+	            M : "місяць",
+	            MM : relativeTimeWithPlural,
+	            y : "рік",
+	            yy : relativeTimeWithPlural
+	        },
+
+	        // M. E.: those two are virtually unused but a user might want to implement them for his/her website for some reason
+
+	        meridiem : function (hour, minute, isLower) {
+	            if (hour < 4) {
+	                return "ночі";
+	            } else if (hour < 12) {
+	                return "ранку";
+	            } else if (hour < 17) {
+	                return "дня";
+	            } else {
+	                return "вечора";
+	            }
+	        },
+
+	        ordinal: function (number, period) {
+	            switch (period) {
+	            case 'M':
+	            case 'd':
+	            case 'DDD':
+	            case 'w':
+	            case 'W':
+	                return number + '-й';
+	            case 'D':
+	                return number + '-го';
+	            default:
+	                return number;
+	            }
+	        },
+
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 1st is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 262 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : uzbek
+	// author : Sardor Muminov : https://github.com/muminoff
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('uz', {
+	        months : "январь_февраль_март_апрель_май_июнь_июль_август_сентябрь_октябрь_ноябрь_декабрь".split("_"),
+	        monthsShort : "янв_фев_мар_апр_май_июн_июл_авг_сен_окт_ноя_дек".split("_"),
+	        weekdays : "Якшанба_Душанба_Сешанба_Чоршанба_Пайшанба_Жума_Шанба".split("_"),
+	        weekdaysShort : "Якш_Душ_Сеш_Чор_Пай_Жум_Шан".split("_"),
+	        weekdaysMin : "Як_Ду_Се_Чо_Па_Жу_Ша".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM YYYY",
+	            LLL : "D MMMM YYYY LT",
+	            LLLL : "D MMMM YYYY, dddd LT"
+	        },
+	        calendar : {
+	            sameDay : '[Бугун соат] LT [да]',
+	            nextDay : '[Эртага] LT [да]',
+	            nextWeek : 'dddd [куни соат] LT [да]',
+	            lastDay : '[Кеча соат] LT [да]',
+	            lastWeek : '[Утган] dddd [куни соат] LT [да]',
+	            sameElse : 'L'
+	        },
+	        relativeTime : {
+	            future : "Якин %s ичида",
+	            past : "Бир неча %s олдин",
+	            s : "фурсат",
+	            m : "бир дакика",
+	            mm : "%d дакика",
+	            h : "бир соат",
+	            hh : "%d соат",
+	            d : "бир кун",
+	            dd : "%d кун",
+	            M : "бир ой",
+	            MM : "%d ой",
+	            y : "бир йил",
+	            yy : "%d йил"
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 7  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 263 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : vietnamese (vi)
+	// author : Bang Nguyen : https://github.com/bangnk
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('vi', {
+	        months : "tháng 1_tháng 2_tháng 3_tháng 4_tháng 5_tháng 6_tháng 7_tháng 8_tháng 9_tháng 10_tháng 11_tháng 12".split("_"),
+	        monthsShort : "Th01_Th02_Th03_Th04_Th05_Th06_Th07_Th08_Th09_Th10_Th11_Th12".split("_"),
+	        weekdays : "chủ nhật_thứ hai_thứ ba_thứ tư_thứ năm_thứ sáu_thứ bảy".split("_"),
+	        weekdaysShort : "CN_T2_T3_T4_T5_T6_T7".split("_"),
+	        weekdaysMin : "CN_T2_T3_T4_T5_T6_T7".split("_"),
+	        longDateFormat : {
+	            LT : "HH:mm",
+	            L : "DD/MM/YYYY",
+	            LL : "D MMMM [năm] YYYY",
+	            LLL : "D MMMM [năm] YYYY LT",
+	            LLLL : "dddd, D MMMM [năm] YYYY LT",
+	            l : "DD/M/YYYY",
+	            ll : "D MMM YYYY",
+	            lll : "D MMM YYYY LT",
+	            llll : "ddd, D MMM YYYY LT"
+	        },
+	        calendar : {
+	            sameDay: "[Hôm nay lúc] LT",
+	            nextDay: '[Ngày mai lúc] LT',
+	            nextWeek: 'dddd [tuần tới lúc] LT',
+	            lastDay: '[Hôm qua lúc] LT',
+	            lastWeek: 'dddd [tuần rồi lúc] LT',
+	            sameElse: 'L'
+	        },
+	        relativeTime : {
+	            future : "%s tới",
+	            past : "%s trước",
+	            s : "vài giây",
+	            m : "một phút",
+	            mm : "%d phút",
+	            h : "một giờ",
+	            hh : "%d giờ",
+	            d : "một ngày",
+	            dd : "%d ngày",
+	            M : "một tháng",
+	            MM : "%d tháng",
+	            y : "một năm",
+	            yy : "%d năm"
+	        },
+	        ordinal : function (number) {
+	            return number;
+	        },
+	        week : {
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 264 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : chinese
+	// author : suupic : https://github.com/suupic
+	// author : Zeno Zeng : https://github.com/zenozeng
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('zh-cn', {
+	        months : "一月_二月_三月_四月_五月_六月_七月_八月_九月_十月_十一月_十二月".split("_"),
+	        monthsShort : "1月_2月_3月_4月_5月_6月_7月_8月_9月_10月_11月_12月".split("_"),
+	        weekdays : "星期日_星期一_星期二_星期三_星期四_星期五_星期六".split("_"),
+	        weekdaysShort : "周日_周一_周二_周三_周四_周五_周六".split("_"),
+	        weekdaysMin : "日_一_二_三_四_五_六".split("_"),
+	        longDateFormat : {
+	            LT : "Ah点mm",
+	            L : "YYYY-MM-DD",
+	            LL : "YYYY年MMMD日",
+	            LLL : "YYYY年MMMD日LT",
+	            LLLL : "YYYY年MMMD日ddddLT",
+	            l : "YYYY-MM-DD",
+	            ll : "YYYY年MMMD日",
+	            lll : "YYYY年MMMD日LT",
+	            llll : "YYYY年MMMD日ddddLT"
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            var hm = hour * 100 + minute;
+	            if (hm < 600) {
+	                return "凌晨";
+	            } else if (hm < 900) {
+	                return "早上";
+	            } else if (hm < 1130) {
+	                return "上午";
+	            } else if (hm < 1230) {
+	                return "中午";
+	            } else if (hm < 1800) {
+	                return "下午";
+	            } else {
+	                return "晚上";
+	            }
+	        },
+	        calendar : {
+	            sameDay : function () {
+	                return this.minutes() === 0 ? "[今天]Ah[点整]" : "[今天]LT";
+	            },
+	            nextDay : function () {
+	                return this.minutes() === 0 ? "[明天]Ah[点整]" : "[明天]LT";
+	            },
+	            lastDay : function () {
+	                return this.minutes() === 0 ? "[昨天]Ah[点整]" : "[昨天]LT";
+	            },
+	            nextWeek : function () {
+	                var startOfWeek, prefix;
+	                startOfWeek = moment().startOf('week');
+	                prefix = this.unix() - startOfWeek.unix() >= 7 * 24 * 3600 ? '[下]' : '[本]';
+	                return this.minutes() === 0 ? prefix + "dddAh点整" : prefix + "dddAh点mm";
+	            },
+	            lastWeek : function () {
+	                var startOfWeek, prefix;
+	                startOfWeek = moment().startOf('week');
+	                prefix = this.unix() < startOfWeek.unix()  ? '[上]' : '[本]';
+	                return this.minutes() === 0 ? prefix + "dddAh点整" : prefix + "dddAh点mm";
+	            },
+	            sameElse : 'LL'
+	        },
+	        ordinal : function (number, period) {
+	            switch (period) {
+	            case "d":
+	            case "D":
+	            case "DDD":
+	                return number + "日";
+	            case "M":
+	                return number + "月";
+	            case "w":
+	            case "W":
+	                return number + "周";
+	            default:
+	                return number;
+	            }
+	        },
+	        relativeTime : {
+	            future : "%s内",
+	            past : "%s前",
+	            s : "几秒",
+	            m : "1分钟",
+	            mm : "%d分钟",
+	            h : "1小时",
+	            hh : "%d小时",
+	            d : "1天",
+	            dd : "%d天",
+	            M : "1个月",
+	            MM : "%d个月",
+	            y : "1年",
+	            yy : "%d年"
+	        },
+	        week : {
+	            // GB/T 7408-1994《数据元和交换格式·信息交换·日期和时间表示法》与ISO 8601:1988等效
+	            dow : 1, // Monday is the first day of the week.
+	            doy : 4  // The week that contains Jan 4th is the first week of the year.
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 265 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// moment.js language configuration
+	// language : traditional chinese (zh-tw)
+	// author : Ben : https://github.com/ben-lin
+
+	(function (factory) {
+	    if (true) {
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(194)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	    } else if (typeof exports === 'object') {
+	        module.exports = factory(require('../moment')); // Node
+	    } else {
+	        factory(window.moment); // Browser global
+	    }
+	}(function (moment) {
+	    return moment.lang('zh-tw', {
+	        months : "一月_二月_三月_四月_五月_六月_七月_八月_九月_十月_十一月_十二月".split("_"),
+	        monthsShort : "1月_2月_3月_4月_5月_6月_7月_8月_9月_10月_11月_12月".split("_"),
+	        weekdays : "星期日_星期一_星期二_星期三_星期四_星期五_星期六".split("_"),
+	        weekdaysShort : "週日_週一_週二_週三_週四_週五_週六".split("_"),
+	        weekdaysMin : "日_一_二_三_四_五_六".split("_"),
+	        longDateFormat : {
+	            LT : "Ah點mm",
+	            L : "YYYY年MMMD日",
+	            LL : "YYYY年MMMD日",
+	            LLL : "YYYY年MMMD日LT",
+	            LLLL : "YYYY年MMMD日ddddLT",
+	            l : "YYYY年MMMD日",
+	            ll : "YYYY年MMMD日",
+	            lll : "YYYY年MMMD日LT",
+	            llll : "YYYY年MMMD日ddddLT"
+	        },
+	        meridiem : function (hour, minute, isLower) {
+	            var hm = hour * 100 + minute;
+	            if (hm < 900) {
+	                return "早上";
+	            } else if (hm < 1130) {
+	                return "上午";
+	            } else if (hm < 1230) {
+	                return "中午";
+	            } else if (hm < 1800) {
+	                return "下午";
+	            } else {
+	                return "晚上";
+	            }
+	        },
+	        calendar : {
+	            sameDay : '[今天]LT',
+	            nextDay : '[明天]LT',
+	            nextWeek : '[下]ddddLT',
+	            lastDay : '[昨天]LT',
+	            lastWeek : '[上]ddddLT',
+	            sameElse : 'L'
+	        },
+	        ordinal : function (number, period) {
+	            switch (period) {
+	            case "d" :
+	            case "D" :
+	            case "DDD" :
+	                return number + "日";
+	            case "M" :
+	                return number + "月";
+	            case "w" :
+	            case "W" :
+	                return number + "週";
+	            default :
+	                return number;
+	            }
+	        },
+	        relativeTime : {
+	            future : "%s內",
+	            past : "%s前",
+	            s : "幾秒",
+	            m : "一分鐘",
+	            mm : "%d分鐘",
+	            h : "一小時",
+	            hh : "%d小時",
+	            d : "一天",
+	            dd : "%d天",
+	            M : "一個月",
+	            MM : "%d個月",
+	            y : "一年",
+	            yy : "%d年"
+	        }
+	    });
+	}));
+
+
+/***/ },
+/* 266 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = function(module) {
+		if(!module.webpackPolyfill) {
+			module.deprecate = function() {};
+			module.paths = [];
+			// module.parent = undefined by default
+			module.children = [];
+			module.webpackPolyfill = 1;
+		}
+		return module;
+	}
+
 
 /***/ }
 /******/ ])

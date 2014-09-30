@@ -1,0 +1,14 @@
+.user_header {
+  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
+  margin-bottom: 20px;
+}
+
+.login-btn,
+.logout-btn {
+  border-bottom: 1px solid;
+  color: #999999;
+  position: absolute;
+  z-index: 10;
+  top: 0.9375rem;
+  right: 0.9375rem;
+}

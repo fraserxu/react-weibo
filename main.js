@@ -3,19 +3,18 @@
 
 var React = require('react');
 var ls = global.localStorage;
-// var axios = require('axios');
 var Header = require('./components/header');
 var Status = require('./components/status');
 var weibo = require('./components/weibo');
 
-require('./css/typography.css')
-require('./css/styles.css')
+require('./css/base.css')
+require('./css/main.css')
 
 var APP = React.createClass({
   getInitialState: function() {
     return {
       loggedIn: false,
-      user: {}
+      profile: {}
     };
   },
   componentWillMount: function() {
@@ -31,10 +30,10 @@ var APP = React.createClass({
   checkLogin: function() {
     if(ls.getItem('weibo-access-token')) {
       // this.getUser(ls.getItem('weibo-access-token'))
-      this.getUser(ls.getItem('weibo-access-token'), function(err, user) {
-        if(err) alert('ger user error')
+      this.getUser(ls.getItem('weibo-access-token'), function(err, profile) {
+        if(err) alert('ger profile error')
         this.setState({
-          user: user
+          profile: profile
         })
       }.bind(this))
       this.setLogin(true)
@@ -51,9 +50,9 @@ var APP = React.createClass({
 
   render: function() {
     return (
-      <div>
-        <Header loggedIn={this.state.loggedIn} user={this.state.user} />
-        <Status loggedIn={this.state.loggedIn} user={this.state.user} />
+      <div id='main-container'>
+        <Header loggedIn={this.state.loggedIn} profile={this.state.profile} />
+        <Status loggedIn={this.state.loggedIn} profile={this.state.profile} />
       </div>
     );
   }

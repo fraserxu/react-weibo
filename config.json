@@ -1,7 +1,7 @@
 {
   "weibo": {
-    "appkey" : "1798437726",
-    "secret" : "73a199f0c4ef0bc3805931dedd59ffc1",
+    "appkey" : "1951152964",
+    "secret" : "a9d105d167753ec346441c739fe22563",
     "oauth_callback_url" : "http://react-weibo.herokuapp.com/auth/weibo/callback"
   }
 }

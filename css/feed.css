@@ -1,0 +1,52 @@
+.post-avatar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-bottom: 0;
+}
+
+.post .avatar-container {
+  display: inline-block;
+}
+
+.post .avatar-container img {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+}
+
+.post-content {
+  display: block;
+  word-wrap: break-word;
+}
+
+.post {
+  position: relative;
+  padding-left: 90px;
+}
+
+.post>div:last-child {
+  margin-bottom: 3.75rem;
+}
+
+.post p {
+  margin-top: 0;
+}
+
+.post p, .post img {
+  margin-bottom: 1.25rem;
+}
+
+.postbar {
+  color: #c7c7c7;
+}
+
+span.like-count,
+span.reposts-count,
+span.comments-count {
+  padding-left: 5px;
+}
+
+.post .postbar {
+  margin-top: -0.5rem;
+}

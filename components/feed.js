@@ -5,21 +5,49 @@ var React = require('react');
 var weibo = require('./weibo');
 var ENTER_KEY_CODE = 13;
 var ls = global.localStorage;
+var Timestamp = require('react-time');
 
 require('../css/feed.css');
 
 var Feed = React.createClass({
+  destroyStatus: function() {
+    weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id)
+  },
+
   render: function() {
     var feed = this.props.feed;
+    var profile = this.props.profile;
     var thumbnail = feed.thumbnail_pic ?
       <img src={feed.thumbnail_pic} alt={feed.text} /> : null
+
+    var deleteButton = profile.name == feed.user.name ?
+      <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
+
+    var publish
+
     return (
-      <li>
-        <img src={feed.user.profile_image_url} alt={feed.user.name} />
-        <span>{feed.user.name}</span>
-        <p>{feed.text}</p>
-        {thumbnail}
-      </li>
+      <article className='post'>
+        {deleteButton}
+
+        <div className='post-avatar'>
+          <span className='avatar-container'>
+            <img src={feed.user.profile_image_url} alt={feed.user.name} />
+          </span>
+        </div>
+
+        <div className='post-content'>
+          <p>{feed.text}</p>
+          {thumbnail}
+        </div>
+
+        <div className='postbar'>
+          <Timestamp value={new Date(feed.created_at)} relative />
+          <span className='like-count'>Like ({feed.attitudes_count})</span>
+          <span className='reposts-count'>Reposts ({feed.reposts_count})</span>
+          <span className='comments-count'>Comment ({feed.comments_count})</span>
+        </div>
+
+      </article>
     )
   }
 });
@@ -67,14 +95,14 @@ var NewPost = React.createClass({
 module.exports = React.createClass({
   render: function() {
     var feeds = this.props.feeds.map(function(feed, key) {
-      return <Feed feed={feed} />
-    })
+      return <Feed profile={this.props.profile} key={key} feed={feed} />
+    }.bind(this))
     return (
-      <div className='feeds'>
+      <div>
         <NewPost />
-        <ul className='posts'>
+        <section className='posts'>
           {feeds}
-        </ul>
+        </section>
       </div>
     );
   }

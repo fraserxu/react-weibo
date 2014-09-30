@@ -2,8 +2,6 @@
 'use strict';
 
 var React = require('react');
-var axios = require('axios');
-var Profile = require('./profile');
 var Feed = require('./feed');
 var weibo = require('./weibo');
 var ls = global.localStorage;
@@ -31,8 +29,7 @@ module.exports = React.createClass({
   render: function() {
     return (
       <div className='container content'>
-        <Profile profile={this.props.user} />
-        <Feed feeds={this.state.feeds} />
+        <Feed feeds={this.state.feeds} profile={this.props.profile}/>
       </div>
     );
   }

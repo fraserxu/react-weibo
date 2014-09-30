@@ -1,9 +1,11 @@
 var jsonp = require('jsonp');
 var axios = require('axios');
 
+var API_BASE = 'https://api.weibo.com/2'
+
 var Weibo = {
   _getUid: function(token, cb) {
-    var uid_url = 'https://api.weibo.com/2/account/get_uid.json?access_token=' + token;
+    var uid_url = API_BASE + '/account/get_uid.json?access_token=' + token;
     jsonp(uid_url, function(err, res) {
       if(err) return cb(err)
       cb(null, res.data.uid)
@@ -11,7 +13,7 @@ var Weibo = {
   },
 
   _getUserByUid: function(token, uid, cb) {
-    var user_url = 'https://api.weibo.com/2/users/show.json?access_token=' + token + '&uid=' + uid
+    var user_url = API_BASE + '/users/show.json?access_token=' + token + '&uid=' + uid
     jsonp(user_url, function(err, res) {
       if(err) cb(err)
       cb(null, res.data)
@@ -31,27 +33,41 @@ var Weibo = {
 
   getTimeline: function(token, cb) {
     if(!token) throw new Error('Need token.')
-    var timeline_url = 'https://api.weibo.com/2/statuses/home_timeline.json?access_token=' + token
+    var timeline_url = API_BASE + '/statuses/home_timeline.json?access_token=' + token
     jsonp(timeline_url, function(err, res) {
       if(err) cb(err)
       cb(null, res.data.statuses)
     })
   },
 
-  // this will never work until CORS is enabled in the server
-  newStatus: function(token, content) {
+  // http://open.weibo.com/wiki/2/statuses/update
+  newStatus: function(token, status) {
     if(!token) throw new Error('Need token.')
-    var new_status_url = 'https://api.weibo.com/2/statuses/update.json?access_token=' + token + '&status=' + content
-    axios.post(new_status_url, {
-      withCredentials: true
+    axios.post('statuses/update', {
+      access_token: token,
+      status: encodeURI(status)
+    }).then(function(response) {
+      console.log(response.data)
     })
-    .then(function (response) {
-        console.log(response);
+    .catch(function(err) {
+      console.log(err)
     })
-    .catch(function (response) {
-        console.log(response);
-    });
+  },
+
+  // http://open.weibo.com/wiki/2/statuses/destroy
+  destroyStatus: function(token, id) {
+    if(!token) throw new Error('Need token.')
+    axios.post('statuses/destroy', {
+      access_token: token,
+      id: id
+    }).then(function(response) {
+      console.log('destroy weibo success', response.data)
+    })
+    .catch(function(err) {
+      console.log(err)
+    })
   }
+
 }
 
 module.exports = Weibo
