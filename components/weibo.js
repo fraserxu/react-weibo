@@ -45,7 +45,7 @@ var Weibo = {
     if(!token) throw new Error('Need token.')
     axios.post('statuses/update', {
       access_token: token,
-      status: encodeURI(status)
+      status: status
     }).then(function(response) {
       cb(null, response)
     })
