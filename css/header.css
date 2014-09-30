@@ -3,12 +3,16 @@
   margin-bottom: 20px;
 }
 
-.login-btn,
-.logout-btn {
+.user_header .link-group a {
   border-bottom: 1px solid;
+  text-decoration: none;
   color: #999999;
+  margin-left: 10px;
+}
+
+.link-group {
   position: absolute;
   z-index: 10;
-  top: 0.9375rem;
-  right: 0.9375rem;
+  top: 10px;
+  right: 20px;
 }

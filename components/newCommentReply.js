@@ -13,8 +13,8 @@ module.exports = React.createClass({
 
   newReply: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
-    weibo.replyComment(ls.getItem('weibo-access-token'), this.props.comment.id, this.props.feed.id, msg, 0, 0, function(err, res) {
-      console.log(res.data)
+    weibo.replyComment(ls.getItem('weibo-access-token'), this.props.comment.id, this.props.feed.id, msg, 1, 1, function(err, res) {
+      console.log('res', res.data)
     })
   },
 

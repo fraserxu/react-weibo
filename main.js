@@ -29,7 +29,6 @@ var APP = React.createClass({
 
   checkLogin: function() {
     if(ls.getItem('weibo-access-token')) {
-      // this.getUser(ls.getItem('weibo-access-token'))
       this.getUser(ls.getItem('weibo-access-token'), function(err, profile) {
         if(err) alert('ger profile error')
         this.setState({
