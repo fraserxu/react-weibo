@@ -29,6 +29,9 @@ module.exports = React.createClass({
       <a className="logout-btn" href="#" onClick={this.logout}>Logout</a> :
       <a className="login-btn" href="/login">Login</a>
 
+    var profile = this.props.loggedIn ?
+      <Profile profile={this.props.profile} /> : null
+
     var postLink = this.props.loggedIn ?
       <a className="login-btn" href="#" onClick={this.composing}>Post</a> : null
 
@@ -45,7 +48,7 @@ module.exports = React.createClass({
 
         {newPostBox}
 
-        <Profile profile={this.props.profile} />
+        {profile}
       </header>
     );
   }

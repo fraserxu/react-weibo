@@ -5,6 +5,7 @@ var React = require('react');
 var Feeds = require('./feeds');
 var weibo = require('./weibo');
 var ls = global.localStorage;
+var About = require('./about');
 
 module.exports = React.createClass({
   getInitialState: function() {
@@ -27,9 +28,12 @@ module.exports = React.createClass({
   },
 
   render: function() {
+    var main = this.props.loggedIn ?
+      <Feeds feeds={this.state.feeds} profile={this.props.profile}/> :
+      <About />
     return (
       <div className='container content'>
-        <Feeds feeds={this.state.feeds} profile={this.props.profile}/>
+        {main}
       </div>
     );
   }
