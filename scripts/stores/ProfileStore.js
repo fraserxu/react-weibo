@@ -13,14 +13,11 @@ var ProfileStore = createStore({
 
 ProfileStore.dispatchToken = AppDispatcher.register(function(payload) {
   var action = payload.action;
-
-  console.log('action', action)
-
   var response = action.response;
 
-  console.log('response', response)
-
-  var entities = response && response.entities;
+  if(response) {
+    _profile = response
+  }
 
   ProfileStore.emitChange();
 })

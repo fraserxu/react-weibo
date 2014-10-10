@@ -2,9 +2,9 @@
 'use strict';
 
 var React = require('react');
-var Feed = require('./feed');
+var Feed = require('./Feed');
 
-require('../css/feed.css');
+require('../../css/feed.css');
 
 module.exports = React.createClass({
   render: function() {

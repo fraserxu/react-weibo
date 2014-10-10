@@ -1,12 +1,17 @@
 'use strict';
 
+var ProfileServerActionCreators = require('../actions/ProfileServerActionCreators');
+var FeedsServerActionCreators = require('../actions/FeedsServerActionCreators');
 var {
   request,
   jsonpRequest
 } = require('./APIUtils');
 
+var TOKEN = localStorage.getItem('accessToken');
+
 var WeiboAPI = {
   _getUid: function(token, cb) {
+    token = TOKEN
     jsonpRequest('/account/get_uid.json', {
       access_token: token
     }, function(err, res) {
@@ -16,31 +21,38 @@ var WeiboAPI = {
   },
 
   _getUserByUid: function(token, uid, cb) {
+    token = TOKEN
     jsonpRequest('/users/show.json', {
       access_token: token,
       uid: uid
     }, function(err, res) {
-      if(err) cb(err)
+      if(err) return cb(err)
       cb(null, res.data)
     })
   },
 
-  getUser: function(token, cb) {
+  getUser: function() {
+    var token = TOKEN
     WeiboAPI._getUid(token, function(err, uid) {
       if(err) return cb(err)
-      Weibo._getUserByUid(token, uid, function(err, user) {
-        if(err) cb(err)
-        cb(null, user)
+      WeiboAPI._getUserByUid(token, uid, function(err, user) {
+        if(err) {
+          return ProfileServerActionCreators.handleProfileError(err)
+        }
+        ProfileServerActionCreators.handleProfileSuccess(user)
       })
     })
   },
 
-  getTimeline: function(token, cb) {
+  getTimeline: function() {
+    var token = TOKEN
     jsonpRequest('/statuses/home_timeline.json', {
       access_token: token
     }, function(err, res) {
-      if(err) cb(err)
-      cb(null, res.data.statuses)
+      if(err) {
+        return FeedsServerActionCreators.handleFeedsError(err)
+      }
+      FeedsServerActionCreators.handleFeedsSuccess(res.data.statuses)
     })
   },
 

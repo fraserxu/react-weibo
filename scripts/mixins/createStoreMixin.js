@@ -3,7 +3,6 @@
 function createStoreMixin(...stores) {
   var StoreMixin = {
     getInitialState() {
-      console.log('getInitialState from store mixin')
       return this.getStateFromStores(this.props);
     },
 

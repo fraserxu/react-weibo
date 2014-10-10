@@ -13,14 +13,11 @@ var FeedsStore = createStore({
 
 FeedsStore.dispatchToken = AppDispatcher.register(function(payload) {
   var action = payload.action;
-
-  console.log('action', action)
-
   var response = action.response;
 
-  console.log('response', response)
-
-  var entities = response && response.entities;
+  if(response) {
+    _feeds = response
+  }
 
   FeedsStore.emitChange();
 })

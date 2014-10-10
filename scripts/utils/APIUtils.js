@@ -11,7 +11,7 @@ var APIUtils = {
     endpoint = API_BASE + endpoint + '?' + qs.stringify(params)
     jsonp(endpoint, function(err, res) {
       if(err) cb(err)
-      cb(null, res.data)
+      cb(null, res)
     })
   },
 

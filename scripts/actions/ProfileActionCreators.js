@@ -6,10 +6,9 @@ var ActionTypes = require('../constants/ActionTypes');
 var ProfileStore = require('../stores/ProfileStore');
 
 var ProfileActionCreators = {
-  requestProfile(name) {
+  requestProfile() {
     AppDispatcher.handleViewAction({
-      type: ActionTypes.REQUEST_PROFILE,
-      name: name
+      type: ActionTypes.REQUEST_PROFILE
     });
 
     WeiboAPI.getUser()

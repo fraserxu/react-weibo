@@ -2,6 +2,8 @@
 'use strict';
 
 var React = require('react');
+var Profile = require('../components/Profile');
+var Feeds = require('../components/Feeds');
 var ProfileActionCreators = require('../actions/ProfileActionCreators');
 var FeedsActionCreators = require('../actions/FeedsActionCreators');
 var createStoreMixin = require('../mixins/createStoreMixin');
@@ -13,7 +15,6 @@ var MainPage = React.createClass({
   mixins: [createStoreMixin(ProfileStore, FeedsStore)],
 
   getStateFromStores(props) {
-    console.log('getStateFromStores props', props)
     var profile = ProfileStore.get();
     var feeds = FeedsStore.get();
 
@@ -37,10 +38,12 @@ var MainPage = React.createClass({
   },
 
   render() {
+    var {feeds, profile} = this.state;
     return (
       <DocumentTitle title='Main Page'>
         <div>
-          Main Page
+          <Profile profile={profile} />
+          <Feeds feeds={feeds} profile={profile} />
         </div>
       </DocumentTitle>
     )
