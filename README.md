@@ -11,6 +11,8 @@ PS: Still WIP.
 
 * Webpack - Build(There's also an browserify branch)
 * React - View
+* Flux - Data flow
+* react-router - Router
 * Express - Auth server only, to send accessToken to client.
 
 ### Development
