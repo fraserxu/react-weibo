@@ -3,16 +3,18 @@
 
 var React = require('react');
 var ENTER_KEY_CODE = 13;
+// var weibo = require('./weibo');
+var ls = global.localStorage;
 
 module.exports = React.createClass({
   getInitialState: function() {
     return {text: ''};
   },
 
-  send: function(content) {
+  newReply: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
-    weibo.newStatus(ls.getItem('weibo-access-token'), msg, function(err, res) {
-      console.log(res.data)
+    weibo.replyComment(ls.getItem('weibo-access-token'), this.props.comment.id, this.props.feed.id, msg, 1, 1, function(err, res) {
+      console.log('res', res.data)
     })
   },
 
@@ -26,9 +28,9 @@ module.exports = React.createClass({
           onChange={this._onChange}
           onKeyDown={this._onKeyDown}
           rows="5"
-          cols="40"
+          cols="80"
         />
-        <button onClick={this.send}>Send</button>
+        <button onClick={this.newReply}>Reply</button>
       </div>
     )
   },
@@ -46,4 +48,4 @@ module.exports = React.createClass({
       this.setState({text: ''});
     }
   }
-})
+});

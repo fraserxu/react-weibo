@@ -2,7 +2,7 @@
 'use strict';
 
 var React = require('react');
-var NewReplyComment = require('./newCommentReply');
+var NewReplyComment = require('./NewCommentReply');
 var Timestamp = require('react-time');
 
 module.exports = React.createClass({

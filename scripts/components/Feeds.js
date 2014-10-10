@@ -2,11 +2,9 @@
 'use strict';
 
 var React = require('react');
-var weibo = require('./weibo');
-var ls = global.localStorage;
-var Feed = require('./feed');
+var Feed = require('./Feed');
 
-require('../css/feed.css');
+require('../../css/feed.css');
 
 module.exports = React.createClass({
   render: function() {

@@ -2,8 +2,8 @@
 'use strict';
 
 var React = require('react');
-var Comment = require('./comment');
-var NewComment = require('./newComment');
+var Comment = require('./Comment');
+var NewComment = require('./NewComment');
 
 module.exports = React.createClass({
   render: function() {

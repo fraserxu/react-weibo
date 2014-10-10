@@ -3,7 +3,7 @@
 
 var React = require('react');
 
-require('../css/profile.css');
+require('../../css/profile.css');
 
 module.exports = React.createClass({
   render: function() {

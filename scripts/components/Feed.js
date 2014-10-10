@@ -2,9 +2,9 @@
 'use strict';
 
 var React = require('react');
-var Comments = require('./comments');
+var Comments = require('./Comments');
 var Timestamp = require('react-time');
-var weibo = require('./weibo');
+// var weibo = require('./weibo');
 var ls = global.localStorage;
 
 module.exports = React.createClass({
@@ -16,20 +16,20 @@ module.exports = React.createClass({
   },
 
   destroyStatus: function() {
-    weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
-      console.log('destroy', data)
-    })
+    // weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
+    //   console.log('destroy', data)
+    // })
   },
 
   loadComments: function() {
     this.setState({
       commentsLoaded: !this.state.commentsLoaded
     })
-    weibo.loadComments(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
-      this.setState({
-        comments: data
-      })
-    }.bind(this))
+    // weibo.loadComments(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
+    //   this.setState({
+    //     comments: data
+    //   })
+    // }.bind(this))
   },
 
   render: function() {
@@ -39,9 +39,9 @@ module.exports = React.createClass({
     var deleteButton = this.props.profile.name == this.props.feed.user.name ?
       <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
 
-    if(this.props.feed.retweeted_status) {
-      console.log(this.props.feed.retweeted_status)
-    }
+    // if(this.props.feed.retweeted_status) {
+    //   console.log(this.props.feed.retweeted_status)
+    // }
 
     var retweet = this.props.feed.retweeted_status ?
       <div className='retweet'><a href={'http://weibo.com/' + this.props.feed.retweeted_status.user.profile_url}>@{this.props.feed.retweeted_status.user.name}</a><p>{this.props.feed.retweeted_status.text}</p> <img src={this.props.feed.retweeted_status.original_pic}/></div>: null
