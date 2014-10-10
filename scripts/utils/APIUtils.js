@@ -12,6 +12,7 @@ var APIUtils = {
     jsonp(endpoint, function(err, res) {
       if(err) cb(err)
       cb(null, res.data)
+    })
   },
 
   request(endpoint, data, cb) {
@@ -24,3 +25,5 @@ var APIUtils = {
     })
   }
 }
+
+module.exports = APIUtils;

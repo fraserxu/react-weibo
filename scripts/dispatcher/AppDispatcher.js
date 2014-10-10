@@ -18,7 +18,7 @@ var AppDispatcher = copyProperties(new Dispatcher(), {
     });
   },
 
-  handleViewACtion(action) {
+  handleViewAction(action) {
     console.log('view action', action);
 
     if (!action.type) {
@@ -31,4 +31,6 @@ var AppDispatcher = copyProperties(new Dispatcher(), {
     })
   }
 
-})
+});
+
+module.exports = AppDispatcher;
