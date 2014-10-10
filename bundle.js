@@ -299,7 +299,9 @@
 	'use strict';
 
 	var React = __webpack_require__(3),
-	    $__0=    __webpack_require__(8),Navigation=$__0.Navigation;
+	  Router = __webpack_require__(8),
+	  Link = Router.Link,
+	  $__0=    __webpack_require__(8),Navigation=$__0.Navigation;
 
 	__webpack_require__(221);
 
@@ -325,7 +327,7 @@
 	        React.DOM.div({className: "link-group"}, 
 	          login, 
 	          postLink, 
-	          React.DOM.a({className: "about-btn", href: "#"}, "About")
+	          Link({to: "about"}, "About")
 	        )
 
 	      )

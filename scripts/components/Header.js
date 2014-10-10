@@ -2,7 +2,9 @@
 'use strict';
 
 var React = require('react'),
-    { Navigation } = require('react-router');
+  Router = require('react-router'),
+  Link = Router.Link,
+  { Navigation } = require('react-router');
 
 require('../../css/header.css');
 
@@ -28,7 +30,7 @@ var Header = React.createClass({
         <div className="link-group">
           {login}
           {postLink}
-          <a className="about-btn" href="#">About</a>
+          <Link to="about">About</Link>
         </div>
 
       </header>
