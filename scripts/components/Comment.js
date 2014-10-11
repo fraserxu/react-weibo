@@ -21,8 +21,8 @@ module.exports = React.createClass({
       <NewReplyComment comment={this.props.comment} feed={this.props.feed} /> : null
 
     return (
-      <li>
-        <div className='comment-avatar'>
+      <li className='comment'>
+        <div className='comment-header'>
           <img src={this.props.comment.user.profile_image_url} alt={this.props.comment.user.name} />
         </div>
         <div className='comment-body'>

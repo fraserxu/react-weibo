@@ -11,7 +11,8 @@ module.exports = React.createClass({
   getInitialState: function() {
     return {
       comments: [],
-      commentsLoaded: false
+      commentsLoaded: false,
+      isImgScaled: false
     };
   },
 
@@ -34,7 +35,16 @@ module.exports = React.createClass({
 
   scaleImg: function() {
     var img = this.refs.thumbnail_pic.getDOMNode();
-    img.src = this.props.feed.original_pic;
+    this.setState({
+      isImgScaled: !this.state.isImgScaled
+    })
+    if (!this.state.isImgScaled) {
+      img.className = 'scaled'
+      img.src = this.props.feed.original_pic;
+    } else {
+      img.className = ''
+      img.src = this.props.feed.thumbnail_pic;
+    }
   },
 
   render: function() {
@@ -44,7 +54,8 @@ module.exports = React.createClass({
     var deleteButton = this.props.profile.name == this.props.feed.user.name ?
       <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
 
-    var retweet = this.props.feed.retweeted_status ? <ReTweet retweeted_status={ this.props.feed.retweeted_status } /> : null
+    var retweet = this.props.feed.retweeted_status ?
+      <ReTweet retweeted_status={ this.props.feed.retweeted_status } /> : null
 
     return (
       <article className='post'>

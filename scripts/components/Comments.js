@@ -5,6 +5,8 @@ var React = require('react');
 var Comment = require('./Comment');
 var NewComment = require('./NewComment');
 
+require('../../css/comment.css');
+
 module.exports = React.createClass({
   render: function() {
     if(!this.props.commentsLoaded) return null;
@@ -16,9 +18,9 @@ module.exports = React.createClass({
       <li>No comment yet.</li>
 
     return (
-      <div className='comments'>
+      <div className='post-comment'>
         <NewComment feed={this.props.feed} />
-        <ul>{comments}</ul>
+        <ul className='comments'>{comments}</ul>
       </div>
     )
   }
