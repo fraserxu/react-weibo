@@ -9,7 +9,8 @@ require('../../css/feed.css');
 module.exports = React.createClass({
   render: function() {
     var feeds = this.props.feeds.map(function(feed, key) {
-      return <Feed profile={this.props.profile} key={key} feed={feed} />
+      // filter AD
+      if (!feed.promotion) return <Feed profile={this.props.profile} key={key} feed={feed} />
     }.bind(this))
 
     return (
