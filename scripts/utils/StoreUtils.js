@@ -18,7 +18,7 @@ var StoreUtils = {
         },
 
         removeChangeListener(callback) {
-          this.remvoeListener(CHANGE_EVENT, callback);
+          this.removeListener(CHANGE_EVENT, callback);
         }
     }));
 
