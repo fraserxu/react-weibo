@@ -1,0 +1,22 @@
+.post-comment .comments {
+  list-style: none;
+  padding-left: 0;
+}
+
+.post-comment .comments .comment {
+  position: relative;
+  margin-top: 5px;
+  margin-bottom: 10px;
+}
+
+.comment .comment-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-top: 15px;
+}
+
+.comment .comment-body {
+  padding-left: 100px;
+  padding-top: 10px;
+}
