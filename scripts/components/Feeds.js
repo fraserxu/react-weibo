@@ -2,7 +2,9 @@
 'use strict';
 
 var React = require('react');
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
 var Feed = require('./Feed');
+var Addons = require('react/addons')
 
 require('../../css/feed.css');
 
@@ -16,7 +18,9 @@ module.exports = React.createClass({
     return (
       <div className='feeds'>
         <section className='posts'>
-          {feeds}
+          <ReactCSSTransitionGroup transitionName="scale">
+            {feeds}
+          </ReactCSSTransitionGroup>
         </section>
       </div>
     );

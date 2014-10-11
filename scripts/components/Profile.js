@@ -22,11 +22,11 @@ module.exports = React.createClass({
 
           <p className='profile-name'>{this.props.profile.name}</p>
 
-          <p className='profile-deets'>
-            posts <span>{this.props.profile.statuses_count}</span>
-            following <span>{this.props.profile.friends_count}</span>
-            followers <span>{this.props.profile.followers_count}</span>
-          </p>
+          <ul className='profile-deets'>
+            <li>posts <span>{this.props.profile.statuses_count}</span></li>
+            <li>following <span>{this.props.profile.friends_count}</span></li>
+            <li>followers <span>{this.props.profile.followers_count}</span></li>
+          </ul>
 
           <div className='profile-bio'>
             <p>{this.props.profile.description}</p>

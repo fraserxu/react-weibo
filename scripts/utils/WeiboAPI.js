@@ -57,36 +57,37 @@ var WeiboAPI = {
   },
 
   // http://open.weibo.com/wiki/2/comments/show
-  loadComments: function(token, id, cb) {
+  loadComments: function(id, cb) {
+    var token = TOKEN
     jsonpRequest('/comments/show.json', {
       access_token: token,
       id: id
     }, function(err, res) {
-      if(err) cb(err)
+      if(err) return cb(err)
       cb(null, res.data.comments)
     })
   },
 
   // http://open.weibo.com/wiki/2/statuses/update
-  newStatus: function(token, status, cb) {
-    if(!token) throw new Error('Need token.')
+  newStatus: function(status, cb) {
+    var token = TOKEN
     request('statuses/update', {
       access_token: token,
       status: status
     }, function(err, res) {
-      if(err) cb(err)
+      if(err) return cb(err)
       cb(null, res)
     })
   },
 
   // http://open.weibo.com/wiki/2/statuses/destroy
-  destroyStatus: function(token, id, cb) {
-    if(!token) throw new Error('Need token.')
+  destroyStatus: function(id, cb) {
+    var token = TOKEN
     request('statuses/destroy', {
       access_token: token,
       id: id
     }, function(err, res) {
-      if(err) cb(err)
+      if(err) return cb(err)
       cb(null, res)
     })
   },
@@ -101,7 +102,7 @@ var WeiboAPI = {
       comment: comment,
       comment_ori: comment_ori || 0
     }, function(err, res) {
-      if(err) cb(err)
+      if(err) return cb(err)
       cb(null, res)
     })
   },
@@ -117,7 +118,7 @@ var WeiboAPI = {
       without_mention: without_mention || 1,
       comment_ori: comment_ori || 1
     }, function(err, res) {
-      if(err) cb(err)
+      if(err) return cb(err)
       cb(null, res)
     })
   }

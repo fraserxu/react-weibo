@@ -75,3 +75,22 @@ span.comments-count {
 .post .postbar {
   margin-top: -0.5rem;
 }
+
+/* Animations */
+.scale-enter {
+  opacity: 0.01;
+  transition: opacity .5s ease-in;
+}
+
+.scale-enter.scale-enter-active {
+  opacity: 1;
+}
+
+.scale-leave {
+  opacity: 1;
+  transition: opacity .5s ease-in;
+}
+
+.scale-leave.scale-leave-active {
+  opacity: 0.01;
+}

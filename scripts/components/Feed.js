@@ -4,8 +4,8 @@
 var React = require('react');
 var Comments = require('./Comments');
 var Timestamp = require('react-time');
-// var weibo = require('./weibo');
-var ls = global.localStorage;
+var WeiboAPI = require('../utils/WeiboAPI');
+var ReTweet = require('./ReTweet');
 
 module.exports = React.createClass({
   getInitialState: function() {
@@ -16,35 +16,35 @@ module.exports = React.createClass({
   },
 
   destroyStatus: function() {
-    // weibo.destroyStatus(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
-    //   console.log('destroy', data)
-    // })
+    WeiboAPI.destroyStatus(this.props.feed.id, function(err, data) {
+      console.log('destroy', data)
+    })
   },
 
   loadComments: function() {
     this.setState({
       commentsLoaded: !this.state.commentsLoaded
     })
-    // weibo.loadComments(ls.getItem('weibo-access-token'), this.props.feed.id, function(err, data) {
-    //   this.setState({
-    //     comments: data
-    //   })
-    // }.bind(this))
+    WeiboAPI.loadComments(this.props.feed.id, function(err, data) {
+      this.setState({
+        comments: data
+      })
+    }.bind(this))
+  },
+
+  scaleImg: function() {
+    var img = this.refs.thumbnail_pic.getDOMNode();
+    img.src = this.props.feed.original_pic;
   },
 
   render: function() {
     var thumbnail = this.props.feed.thumbnail_pic ?
-      <img src={this.props.feed.thumbnail_pic} alt={this.props.feed.text} /> : null
+      <img ref='thumbnail_pic' onClick={this.scaleImg} src={this.props.feed.thumbnail_pic} alt={this.props.feed.text} /> : null
 
     var deleteButton = this.props.profile.name == this.props.feed.user.name ?
       <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
 
-    // if(this.props.feed.retweeted_status) {
-    //   console.log(this.props.feed.retweeted_status)
-    // }
-
-    var retweet = this.props.feed.retweeted_status ?
-      <div className='retweet'><a href={'http://weibo.com/' + this.props.feed.retweeted_status.user.profile_url}>@{this.props.feed.retweeted_status.user.name}</a><p>{this.props.feed.retweeted_status.text}</p> <img src={this.props.feed.retweeted_status.original_pic}/></div>: null
+    var retweet = this.props.feed.retweeted_status ? <ReTweet retweeted_status={ this.props.feed.retweeted_status } /> : null
 
     return (
       <article className='post'>
