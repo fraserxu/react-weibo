@@ -10,7 +10,6 @@ module.exports = React.createClass({
     };
   },
 
-
   scaleImg: function() {
     var img = this.refs.thumbnail_pic.getDOMNode();
     this.setState({

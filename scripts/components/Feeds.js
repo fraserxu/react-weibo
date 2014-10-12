@@ -12,7 +12,7 @@ module.exports = React.createClass({
   render: function() {
     var feeds = this.props.feeds.map(function(feed, key) {
       // filter AD
-      if (!feed.promotion) return <Feed profile={this.props.profile} key={key} feed={feed} />
+      if (!feed.promotion) return <Feed key={key} feed={feed} />
     }.bind(this))
 
     return (

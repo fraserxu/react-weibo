@@ -2,6 +2,7 @@
 
 var ProfileServerActionCreators = require('../actions/ProfileServerActionCreators');
 var FeedsServerActionCreators = require('../actions/FeedsServerActionCreators');
+var TimelineServerActionCreators = require('../actions/TimelineServerActionCreators');
 var {
   request,
   jsonpRequest
@@ -10,8 +11,8 @@ var {
 var TOKEN = localStorage.getItem('accessToken');
 
 var WeiboAPI = {
-  _getUid: function(token, cb) {
-    token = TOKEN
+  _getUid: function(cb) {
+    var token = TOKEN
     jsonpRequest('/account/get_uid.json', {
       access_token: token
     }, function(err, res) {
@@ -20,8 +21,8 @@ var WeiboAPI = {
     })
   },
 
-  _getUserByUid: function(token, uid, cb) {
-    token = TOKEN
+  getUserByUid: function(uid, cb) {
+    var token = TOKEN
     jsonpRequest('/users/show.json', {
       access_token: token,
       uid: uid
@@ -31,11 +32,21 @@ var WeiboAPI = {
     })
   },
 
-  getUser: function() {
+  getUserByName: function(token, name, cb) {
     var token = TOKEN
-    WeiboAPI._getUid(token, function(err, uid) {
+    jsonpRequest('/users/show.json', {
+      access_token: token,
+      screen_name: name
+    }, function(err, res) {
       if(err) return cb(err)
-      WeiboAPI._getUserByUid(token, uid, function(err, user) {
+      cb(null, res.data)
+    })
+  },
+
+  getUser: function() {
+    WeiboAPI._getUid(function(err, uid) {
+      if(err) return cb(err)
+      WeiboAPI.getUserByUid(uid, function(err, user) {
         if(err) {
           return ProfileServerActionCreators.handleProfileError(err)
         }
@@ -53,6 +64,21 @@ var WeiboAPI = {
         return FeedsServerActionCreators.handleFeedsError(err)
       }
       FeedsServerActionCreators.handleFeedsSuccess(res.data.statuses)
+    })
+  },
+
+  // uid or screen_name
+  // http://open.weibo.com/wiki/2/statuses/user_timeline
+  getTimelineByName: function(name) {
+    var token = TOKEN
+    jsonpRequest('/statuses/user_timeline.json', {
+      access_token: token,
+      screen_name: name
+    }, function(err, res) {
+      if(err) {
+        return TimelineServerActionCreators.handleTimelineError(err)
+      }
+      TimelineServerActionCreators.handleTimelineSuccess(res.data.statuses)
     })
   },
 

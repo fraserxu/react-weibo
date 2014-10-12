@@ -9,5 +9,9 @@ module.exports = KeyMirror({
 
   REQUEST_FEEDS: null,
   REQUEST_FEEDS_SUCCESS: null,
-  REQUEST_FEEDS_ERROR: null
+  REQUEST_FEEDS_ERROR: null,
+
+  REQUEST_TIMELINE: null,
+  REQUEST_TIMELINE_SUCCESS: null,
+  REQUEST_TIMELINE_ERROR: null
 });

@@ -14,9 +14,14 @@ var DocumentTitle = require('react-document-title');
 var MainPage = React.createClass({
   mixins: [createStoreMixin(ProfileStore, FeedsStore)],
 
-  getStateFromStores(props) {
+  getStateFromStores() {
     var profile = ProfileStore.get();
     var feeds = FeedsStore.get();
+
+    console.log('getStateFromStores', {
+      profile: profile,
+      feeds: feeds
+    })
 
     return {
       profile: profile,
@@ -25,7 +30,7 @@ var MainPage = React.createClass({
   },
 
   componentDidMount: function() {
-    this.profileDidChange(this.props);
+    this.profileDidChange();
   },
 
   componentWillReceiveProps(nextProps) {
@@ -39,6 +44,10 @@ var MainPage = React.createClass({
 
   render() {
     var {feeds, profile} = this.state;
+    // console.log('this.state', {
+    //   feeds: feeds,
+    //   profile: profile
+    // })
     return (
       <DocumentTitle title='Main Page'>
         <div>

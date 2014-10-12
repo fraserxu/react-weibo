@@ -9,17 +9,17 @@ var CHANGE_EVENT = 'change';
 var StoreUtils = {
   createStore(spec) {
     var store = merge(EventEmitter.prototype, merge(spec, {
-        emitChange() {
-          this.emit(CHANGE_EVENT);
-        },
+      emitChange() {
+        this.emit(CHANGE_EVENT);
+      },
 
-        addChangeListener(callback) {
-          this.on(CHANGE_EVENT, callback);
-        },
+      addChangeListener(callback) {
+        this.on(CHANGE_EVENT, callback);
+      },
 
-        removeChangeListener(callback) {
-          this.removeListener(CHANGE_EVENT, callback);
-        }
+      removeChangeListener(callback) {
+        this.removeListener(CHANGE_EVENT, callback);
+      }
     }));
 
     _.forEach(store, function(val, key) {

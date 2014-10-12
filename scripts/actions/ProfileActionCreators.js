@@ -12,6 +12,14 @@ var ProfileActionCreators = {
     });
 
     WeiboAPI.getUser()
+  },
+
+  requestProfileById(id) {
+    AppDispatcher.handleViewAction({
+      type: ActionTypes.REQUEST_PROFILE
+    });
+
+    WeiboAPI.getUserByUid(id)
   }
 }
 

@@ -12,10 +12,12 @@ var ProfileStore = createStore({
 });
 
 ProfileStore.dispatchToken = AppDispatcher.register(function(payload) {
+
   var action = payload.action;
   var response = action.response;
 
   if(response) {
+    console.log('profile response', response)
     _profile = response
   }
 

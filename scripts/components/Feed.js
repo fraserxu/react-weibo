@@ -51,26 +51,27 @@ module.exports = React.createClass({
     var thumbnail = this.props.feed.thumbnail_pic ?
       <img ref='thumbnail_pic' onClick={this.scaleImg} src={this.props.feed.thumbnail_pic} alt={this.props.feed.text} /> : null
 
-    var deleteButton = this.props.profile.name == this.props.feed.user.name ?
-      <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
+    // var deleteButton = this.props.profile.name == this.props.feed.user.name ?
+    //   <button className="delete-btn" onClick={this.destroyStatus}>Delete</button> : null
 
     var retweet = this.props.feed.retweeted_status ?
       <ReTweet retweeted_status={ this.props.feed.retweeted_status } /> : null
 
+    var parsedText;
     var URL_REGEX = new RegExp("(^|[ \t\r\n])((ftp|http|https|gopher|mailto|news|nntp|telnet|wais|file|prospero|aim|webcal):(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))", "g")
     var urls = this.props.feed.text.match(URL_REGEX)
-    var parsedText;
 
     if(urls) {
       urls.forEach(function(url) {
         url = url.trim()
         parsedText = this.props.feed.text.replace(url, '<a target="_blank" href="'+ url + '">' + url + '</a>')
       }.bind(this))
+    } else {
+      parsedText = this.props.feed.text
     }
 
     return (
       <article className='post'>
-        {deleteButton}
 
         <div className='post-avatar'>
           <span className='avatar-container'>
