@@ -16,6 +16,9 @@ html {
 
 html,body {
     height: 100%;
+    font-family: "AtlasTypewriterRegular", "Andale Mono", "Consolas", "Lucida Console", "Menlo", "Luxi Mono", monospace;
+    font-style: normal;
+    font-weight: 400;
 }
 
 body {

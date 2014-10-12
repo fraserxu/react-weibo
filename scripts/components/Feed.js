@@ -57,6 +57,17 @@ module.exports = React.createClass({
     var retweet = this.props.feed.retweeted_status ?
       <ReTweet retweeted_status={ this.props.feed.retweeted_status } /> : null
 
+    var URL_REGEX = new RegExp("(^|[ \t\r\n])((ftp|http|https|gopher|mailto|news|nntp|telnet|wais|file|prospero|aim|webcal):(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))", "g")
+    var urls = this.props.feed.text.match(URL_REGEX)
+    var parsedText;
+
+    if(urls) {
+      urls.forEach(function(url) {
+        url = url.trim()
+        parsedText = this.props.feed.text.replace(url, '<a target="_blank" href="'+ url + '">' + url + '</a>')
+      }.bind(this))
+    }
+
     return (
       <article className='post'>
         {deleteButton}
@@ -68,7 +79,7 @@ module.exports = React.createClass({
         </div>
 
         <div className='post-content'>
-          <p>{this.props.feed.text}</p>
+          <p dangerouslySetInnerHTML={{__html: parsedText}} />
           {thumbnail}
           {retweet}
         </div>

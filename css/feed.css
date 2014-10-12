@@ -54,6 +54,17 @@
   margin-bottom: 3.75rem;
 }
 
+.post p a {
+  border-bottom: 1px solid;
+  text-decoration: none;
+  color: inherit;
+}
+
+.post p a:hover {
+  color: #c7c7c7;
+  outline: none;
+}
+
 .post p, .post img {
   margin-bottom: 1.25rem;
   margin-top: 0;
