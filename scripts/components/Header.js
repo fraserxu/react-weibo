@@ -11,19 +11,22 @@ require('../../css/header.css');
 var Header = React.createClass({
   mixins: [Navigation],
 
-  // getInitialState() {
-  //   return {
-  //     loginOrRepo: 'gaearon'
-  //   };
-  // },
+  getInitialState() {
+    return {
+      composing: false
+    };
+  },
+
+  composing: function() {
+    this.setState({composing: !this.state.composing})
+  },
 
   render() {
     var login = this.props.loggedIn ?
       <a className="logout-btn" href="#" onClick={this.logout}>Logout</a> :
       <a className="login-btn" href="/login">Login</a>
 
-    var postLink = this.props.loggedIn ?
-      <a className="login-btn" href="#" onClick={this.composing}>Post</a> : null
+    var postLink = <a className="login-btn" href="#" onClick={this.composing}>Post</a>
 
     return (
       <header className="user_header">
@@ -37,9 +40,6 @@ var Header = React.createClass({
     );
   }
 
-  // handleGoClick() {
-  //   this.transitionTo('/' + this.state.loginOrRepo);
-  // }
 });
 
 module.exports = Header;

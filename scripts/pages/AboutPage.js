@@ -10,7 +10,7 @@ var AboutPage = React.createClass({
     return (
       <DocumentTitle title='About Page'>
         <div id='about'>
-          <article className="markdown-body entry-content" itemprop="mainContentOfPage"><h1>
+          <article className="markdown-body entry-content"><h1>
             <a name="user-content-react-weibo" className="anchor" href="#react-weibo" aria-hidden="true"><span className="octicon octicon-link"></span></a>react-weibo</h1>
 
             <p>An experiment to make a pure client-side Sina weibo client with reactjs.</p>

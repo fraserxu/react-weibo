@@ -10,23 +10,24 @@ var createStoreMixin = require('../mixins/createStoreMixin');
 var ProfileStore = require('../stores/ProfileStore');
 var FeedsStore = require('../stores/FeedsStore');
 var DocumentTitle = require('react-document-title');
+var { Navigation } = require('react-router');
 
 var MainPage = React.createClass({
-  mixins: [createStoreMixin(ProfileStore, FeedsStore)],
+  mixins: [createStoreMixin(ProfileStore, FeedsStore), Navigation],
 
   getStateFromStores() {
     var profile = ProfileStore.get();
     var feeds = FeedsStore.get();
 
-    console.log('getStateFromStores', {
-      profile: profile,
-      feeds: feeds
-    })
-
     return {
       profile: profile,
       feeds: feeds
     }
+  },
+
+  componentWillMount: function() {
+    var loggedIn = !!localStorage.getItem('accessToken')
+    if (!loggedIn) this.transitionTo('/login')
   },
 
   componentDidMount: function() {
@@ -44,10 +45,6 @@ var MainPage = React.createClass({
 
   render() {
     var {feeds, profile} = this.state;
-    // console.log('this.state', {
-    //   feeds: feeds,
-    //   profile: profile
-    // })
     return (
       <DocumentTitle title='Main Page'>
         <div>

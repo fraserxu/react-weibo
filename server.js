@@ -44,7 +44,7 @@ passport.use(new WeiboStrategy({
 app.get('/login', passport.authenticate('weibo'), function(req, res){ });
 
 app.get('/auth/weibo/callback', passport.authenticate('weibo', { failureRedirect: '/login' }), function(req, res) {
-  res.redirect('/?accessToken=' + req.user.authInfo.accessToken);
+  res.redirect('/#/auth?accessToken=' + req.user.authInfo.accessToken);
 });
 
 // forward any post reqeust to weibo api

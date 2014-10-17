@@ -53,7 +53,6 @@ var ProfilePage = React.createClass({
     return (
       <DocumentTitle title='User Profile'>
         <div>
-          <Profile profile={profile} />
           <Feeds feeds={timeline} />
         </div>
       </DocumentTitle>

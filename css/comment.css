@@ -16,7 +16,19 @@
   padding-top: 15px;
 }
 
+.comment-header img{
+  border-radius: 25px;
+}
+
 .comment .comment-body {
   padding-left: 100px;
   padding-top: 10px;
+}
+
+.comment-body a {
+  text-decoration: none;
+  border-bottom: 1px solid;
+  background: transparent;
+  font-size: 0.75rem;
+  color: #333333;
 }
