@@ -1,0 +1,25 @@
+#login {
+  text-align: center;
+  margin-top: 200px;
+}
+
+#login img {
+  width: 200px;
+}
+
+#login a {
+  color: white;
+  background-color: #333;
+  padding: 10px 20px;
+  width: 200px;
+  border: 1px solid white;
+  text-align: center;
+  margin: 20px auto;
+  font-size: 16px;
+  display: block;
+  text-decoration: none;
+}
+
+#login a:hover {
+  background-color: black;
+}
