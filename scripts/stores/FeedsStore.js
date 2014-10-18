@@ -16,8 +16,7 @@ FeedsStore.dispatchToken = AppDispatcher.register(function(payload) {
   var action = payload.action;
   var response = action.response;
 
-  if(response) {
-    console.log('feeds response', response)
+  if(response && payload.action.type === 'REQUEST_FEEDS_SUCCESS') {
     _feeds = response
   }
 

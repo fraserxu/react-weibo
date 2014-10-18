@@ -22,16 +22,12 @@ var Header = React.createClass({
   },
 
   render() {
-    var login = this.props.loggedIn ?
-      <a className="logout-btn" href="#" onClick={this.logout}>Logout</a> :
-      <a className="login-btn" href="/login">Login</a>
-
     var postLink = <a className="login-btn" href="#" onClick={this.composing}>Post</a>
 
     return (
       <header className="user_header">
         <div className="link-group">
-          {login}
+          <a className="logout-btn" href="#" onClick={this.logout}>Logout</a>
           {postLink}
           <Link to="about">About</Link>
         </div>

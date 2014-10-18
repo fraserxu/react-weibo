@@ -16,8 +16,7 @@ ProfileStore.dispatchToken = AppDispatcher.register(function(payload) {
   var action = payload.action;
   var response = action.response;
 
-  if(response) {
-    console.log('profile response', response)
+  if(response && payload.action.type === 'REQUEST_PROFILE_SUCCESS') {
     _profile = response
   }
 
