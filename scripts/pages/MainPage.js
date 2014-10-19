@@ -45,10 +45,14 @@ var MainPage = React.createClass({
 
   render() {
     var {feeds, profile} = this.state;
+
+    var profileComponent = profile === 'undefined' ?
+      <Profile profile={profile} /> : null
+
     return (
       <DocumentTitle title='Main Page'>
         <div>
-          <Profile profile={profile} />
+          {profileComponent}
           <Feeds feeds={feeds} profile={profile} />
         </div>
       </DocumentTitle>

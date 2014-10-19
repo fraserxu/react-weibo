@@ -3,6 +3,7 @@
 
 var React = require('react');
 var ENTER_KEY_CODE = 13;
+var WeiboAPI = require('../utils/WeiboAPI');
 
 module.exports = React.createClass({
   getInitialState: function() {
@@ -11,7 +12,7 @@ module.exports = React.createClass({
 
   send: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
-    weibo.newStatus(ls.getItem('weibo-access-token'), msg, function(err, res) {
+    WeiboAPI.newStatus(msg, function(err, res) {
       console.log(res.data)
     })
   },

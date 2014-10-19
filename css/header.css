@@ -31,3 +31,20 @@
 .user_header .new button {
   float: right;
 }
+
+.new textarea {
+  outline: none;
+}
+
+.new button {
+  border: 1px solid black;
+  background-color: white;
+  padding: 5px 10px;
+  margin: 5px 0;
+  cursor: pointer;
+}
+
+.new button:hover {
+  background-color: black;
+  color: white;
+}

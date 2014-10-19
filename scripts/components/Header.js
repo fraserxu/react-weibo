@@ -2,6 +2,7 @@
 'use strict';
 
 var React = require('react'),
+  NewPost = require('./NewPost'),
   Router = require('react-router'),
   Link = Router.Link,
   { Navigation } = require('react-router');
@@ -29,6 +30,9 @@ var Header = React.createClass({
   render() {
     var postLink = <a className="login-btn" href="#" onClick={this.composing}>Post</a>
 
+    var newPost = this.state.composing ?
+      <NewPost /> : null
+
     return (
       <header className="user_header">
         <div className="link-group">
@@ -36,6 +40,8 @@ var Header = React.createClass({
           {postLink}
           <Link to="about">About</Link>
         </div>
+
+        {newPost}
 
       </header>
     );
