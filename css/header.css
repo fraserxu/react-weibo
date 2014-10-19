@@ -3,6 +3,10 @@
   margin-bottom: 20px;
 }
 
+.logo {
+  width: 25px;
+}
+
 .user_header .link-group a {
   border-bottom: 1px solid;
   text-decoration: none;

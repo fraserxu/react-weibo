@@ -119,8 +119,8 @@ var WeiboAPI = {
   },
 
   // http://open.weibo.com/wiki/2/comments/create
-  replyPost: function(token, id, comment, comment_ori, cb) {
-    if(!token) throw new Error('Need token.')
+  replyPost: function(id, comment, comment_ori, cb) {
+    var token = TOKEN
 
     request('comments/create', {
       access_token: token,
@@ -134,8 +134,8 @@ var WeiboAPI = {
   },
 
   // http://open.weibo.com/wiki/2/comments/reply
-  replyComment: function(token, cid, pid, comment, without_mention, comment_ori, cb) {
-    if(!token) throw new Error('Need token.')
+  replyComment: function(cid, pid, comment, without_mention, comment_ori, cb) {
+    var token = TOKEN
     request('comments/create', {
       access_token: token,
       cid: cid,

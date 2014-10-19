@@ -3,8 +3,7 @@
 
 var React = require('react');
 var ENTER_KEY_CODE = 13;
-// var weibo = require('./weibo');
-var ls = global.localStorage;
+var WeiboAPI = require('../utils/WeiboAPI');
 
 module.exports = React.createClass({
   getInitialState: function() {
@@ -13,7 +12,7 @@ module.exports = React.createClass({
 
   newReply: function(content) {
     var msg = typeof content === 'string' ? content : this.state.text
-    weibo.replyComment(ls.getItem('weibo-access-token'), this.props.comment.id, this.props.feed.id, msg, 1, 1, function(err, res) {
+    WeiboAPI.replyComment(this.props.comment.id, this.props.feed.id, msg, 1, 1, function(err, res) {
       console.log('res', res.data)
     })
   },

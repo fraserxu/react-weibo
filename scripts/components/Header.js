@@ -18,11 +18,13 @@ var Header = React.createClass({
     };
   },
 
-  composing() {
+  composing(e) {
+    e.preventDefault()
     this.setState({composing: !this.state.composing})
   },
 
-  logout() {
+  logout(e) {
+    e.preventDefault()
     localStorage.removeItem('accessToken')
     this.transitionTo('/login')
   },
@@ -35,10 +37,15 @@ var Header = React.createClass({
 
     return (
       <header className="user_header">
+
+        <Link to="main" className="logo-group">
+          <img className="logo" src="../../images/weibo_logo.png" />
+        </Link>
+
         <div className="link-group">
+          <Link to="about">About</Link>
           <a className="logout-btn" href="#" onClick={this.logout}>Logout</a>
           {postLink}
-          <Link to="about">About</Link>
         </div>
 
         {newPost}
