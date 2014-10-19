@@ -17,8 +17,13 @@ var Header = React.createClass({
     };
   },
 
-  composing: function() {
+  composing() {
     this.setState({composing: !this.state.composing})
+  },
+
+  logout() {
+    localStorage.removeItem('accessToken')
+    this.transitionTo('/login')
   },
 
   render() {
