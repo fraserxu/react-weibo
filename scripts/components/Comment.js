@@ -12,7 +12,8 @@ module.exports = React.createClass({
     };
   },
 
-  replyComment: function() {
+  replyComment: function(e) {
+    e.preventDefault();
     this.setState({ creatingReply: !this.state.creatingReply});
   },
 
@@ -29,7 +30,7 @@ module.exports = React.createClass({
           <a href={'http://weibo.com/' + this.props.comment.user.profile_url}>@{this.props.comment.user.name}</a>
           <p>{this.props.comment.text}</p>
           <Timestamp value={new Date(this.props.comment.created_at)} relative />
-          <button onClick={this.replyComment}>Reply</button>
+          <a className='reply' href='#' onClick={this.replyComment}>Reply</a>
         </div>
         {newReplyComment}
       </li>

@@ -55,10 +55,13 @@ var WeiboAPI = {
     })
   },
 
-  getTimeline: function() {
+  getTimeline: function(page) {
+    page = page || 1
     var token = TOKEN
     jsonpRequest('/statuses/home_timeline.json', {
-      access_token: token
+      access_token: token,
+      count: 100,
+      page: page
     }, function(err, res) {
       if(err) {
         return FeedsServerActionCreators.handleFeedsError(err)

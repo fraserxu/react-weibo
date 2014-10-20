@@ -32,3 +32,9 @@
   font-size: 0.75rem;
   color: #333333;
 }
+
+.comment-body a.reply {
+  font-size: 0.85rem;
+  color: #999999;
+  margin-left: 10px;
+}

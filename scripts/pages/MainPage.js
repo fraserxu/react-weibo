@@ -11,6 +11,11 @@ var ProfileStore = require('../stores/ProfileStore');
 var FeedsStore = require('../stores/FeedsStore');
 var DocumentTitle = require('react-document-title');
 var { Navigation } = require('react-router');
+var Spinner = require('react-spinner');
+var _ = require('lodash');
+
+require('../../css/spinner.css');
+
 
 var MainPage = React.createClass({
   mixins: [createStoreMixin(ProfileStore, FeedsStore), Navigation],
@@ -53,10 +58,35 @@ var MainPage = React.createClass({
       <DocumentTitle title='Main Page'>
         <div>
           {profileComponent}
+
+          {_.isEmpty(feeds) &&
+            <Spinner />
+          }
+
           <Feeds feeds={feeds} profile={profile} />
+
+          {this.loadMore()}
+
         </div>
       </DocumentTitle>
     )
+  },
+
+  loadMore() {
+    var isFetching = false
+
+    return (
+      <div className='load-more'>
+        <button onClick={this.handleLoadMoreClick}
+          disabled={isFetching}>
+          {isFetching ? 'Loading' : 'Load more' }
+        </button>
+      </div>
+    )
+  },
+
+  handleLoadMoreClick() {
+
   }
 });
 

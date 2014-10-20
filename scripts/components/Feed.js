@@ -6,13 +6,15 @@ var Comments = require('./Comments');
 var Timestamp = require('react-time');
 var WeiboAPI = require('../utils/WeiboAPI');
 var ReTweet = require('./ReTweet');
+var Spinner = require('react-spinner');
 
 module.exports = React.createClass({
   getInitialState: function() {
     return {
       comments: [],
       commentsLoaded: false,
-      isImgScaled: false
+      isImgScaled: false,
+      commentOpen: false
     };
   },
 
@@ -22,14 +24,19 @@ module.exports = React.createClass({
     })
   },
 
-  loadComments: function() {
+  loadComments: function(e) {
+    e.preventDefault();
+
     this.setState({
-      commentsLoaded: !this.state.commentsLoaded
+      commentOpen: !this.state.commentOpen
     })
     WeiboAPI.loadComments(this.props.feed.id, function(err, data) {
-      this.setState({
-        comments: data
-      })
+      if(!err) {
+        this.setState({
+          comments: data,
+          commentsLoaded: true
+        })
+      }
     }.bind(this))
   },
 
@@ -89,10 +96,16 @@ module.exports = React.createClass({
           <Timestamp value={new Date(this.props.feed.created_at)} relative />
           <span className='like-count'>Like ({this.props.feed.attitudes_count})</span>
           <span className='reposts-count'>Reposts ({this.props.feed.reposts_count})</span>
-          <span className='comments-count'>Comment (<a onClick={this.loadComments}>{this.props.feed.comments_count}</a>)</span>
+          <span className='comments-count'>Comment (<a href='#' onClick={this.loadComments}>{this.props.feed.comments_count}</a>)</span>
         </div>
 
-        <Comments feed={this.props.feed} comments={this.state.comments} commentsLoaded={this.state.commentsLoaded}/>
+        {this.state.commentOpen && !this.state.commentsLoaded ?
+          <Spinner /> : null
+        }
+
+        {this.state.commentOpen && this.state.commentsLoaded ?
+          <Comments feed={this.props.feed} comments={this.state.comments} /> : null
+        }
       </article>
     )
   }

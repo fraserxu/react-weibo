@@ -9,8 +9,6 @@ require('../../css/comment.css');
 
 module.exports = React.createClass({
   render: function() {
-    if(!this.props.commentsLoaded) return null;
-
     var comments = (this.props.comments.length > 0) ?
       this.props.comments.map(function(comment, key) {
         return <Comment key={key} comment={comment} feed={this.props.feed} />

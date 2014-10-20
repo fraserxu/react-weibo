@@ -3,3 +3,24 @@
   padding: 10px 20px;
   min-height: 100%;
 }
+
+.load-more {
+  text-align: center;
+}
+
+.load-more button {
+  border: 1px solid black;
+  background-color: white;
+  padding: 5px 10px;
+  margin: 5px 0;
+  cursor: pointer;
+}
+
+.load-more button:hover {
+  background-color: black;
+  color: white;
+}
+
+textarea {
+  resize: none;
+}

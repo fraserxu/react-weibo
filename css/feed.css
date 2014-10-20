@@ -47,11 +47,10 @@
 .post {
   position: relative;
   padding-left: 90px;
-  padding-bottom: 40px;
 }
 
 .post>div:last-child {
-  margin-bottom: 3.75rem;
+  margin-bottom: 40px;
 }
 
 .post p a {
@@ -81,6 +80,15 @@
 
 .postbar {
   color: #c7c7c7;
+}
+
+.postbar a {
+  text-decoration: none;
+  color: #999999;
+}
+
+.postbar a:hover {
+  text-decoration: underline;
 }
 
 span.like-count,
