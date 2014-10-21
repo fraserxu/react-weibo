@@ -51,13 +51,12 @@ var MainPage = React.createClass({
   render() {
     var {feeds, profile} = this.state;
 
-    var profileComponent = profile === 'undefined' ?
-      <Profile profile={profile} /> : null
-
     return (
-      <DocumentTitle title='Main Page'>
+      <DocumentTitle title={'Weibo | ' + profile.name}>
         <div>
-          {profileComponent}
+          {!_.isEmpty(profile) &&
+            <Profile profile={profile} />
+          }
 
           {_.isEmpty(feeds) &&
             <Spinner />
